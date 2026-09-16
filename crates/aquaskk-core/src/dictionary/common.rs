@@ -31,8 +31,8 @@ impl CommonDictionary {
         Ok(dictionary)
     }
 
-    #[cfg(test)]
-    pub(crate) fn from_str(text: &str) -> Self {
+    /// Build an in-memory dictionary from SKK-JISYO formatted text.
+    pub fn from_str(text: &str) -> Self {
         let mut file = DictionaryFile::new();
         file.load_from_str(text);
         file.sort();
