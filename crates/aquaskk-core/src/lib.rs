@@ -2,7 +2,9 @@
 //!
 //! Ported from <https://github.com/codefirst/aquaskk> (GPL-2.0-or-later).
 
+pub mod backend;
 pub mod candidate;
+pub mod dictionary;
 pub mod entry;
 pub mod input_mode;
 pub mod jconv;
