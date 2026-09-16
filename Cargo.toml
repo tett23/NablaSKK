@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["crates/aquaskk-core", "crates/skkserv"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-or-later"
+repository = "https://github.com/tett23/aquaskk-rust"
