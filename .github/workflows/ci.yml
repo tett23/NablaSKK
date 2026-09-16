@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: cargo test
+        run: cargo test --workspace
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Swift FFI smoke test
+        if: runner.os == 'macOS'
+        run: sh swift/run-smoke-test.sh
+      - name: Build macOS input method
+        if: runner.os == 'macOS'
+        run: sh macos/build-app.sh

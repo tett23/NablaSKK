@@ -37,7 +37,8 @@ upstream-patches/ 本家 C++ 側の修正パッチ
 | `bridge` / `config` | `bridge/` | ホスト UI 境界のトレイトと設定 |
 | `calculator` | `utility/calculator.h` | =式 の簡易計算 |
 
-macOS の InputMethodKit 層(本家 `platform/mac`, Objective-C++)は含まれません。
+macOS の InputMethodKit 層は本家(Objective-C++)の移植ではなく、
+`macos/` に Swift + FFI で新規実装しています。エンジン自体は
 `bridge::FrontEnd` などのトレイトを実装することで任意のホストに組み込めます。
 
 ### skkserv
@@ -61,6 +62,21 @@ cargo build --release
 cargo run --release -p skk-cli -- /usr/share/skk/SKK-JISYO.L
 ```
 
+### macOS 入力メソッド (AquaSKK-Rust.app)
+
+InputMethodKit 製の実際に使える IME です。
+
+```sh
+sh macos/build-app.sh
+cp -r macos/dist/AquaSKK-Rust.app ~/Library/Input\ Methods/
+```
+
+インストール後、ログインし直して「システム設定 → キーボード → 入力ソース」で
+AquaSKK-Rust を追加してください。辞書は
+`~/Library/Application Support/AquaSKK-Rust/dictionaries.conf` で設定します
+(初回起動時に生成。既存 AquaSKK の SKK-JISYO.L があれば自動で利用します)。
+候補ウィンドウはマークテキスト内へのインライン描画で、a/s/d/f/j/k/l で選択できます。
+
 ### aquaskk-ffi + Swift
 
 Swift / Objective-C から使うための C ABI です。ヘッダは
@@ -81,9 +97,10 @@ macOS の InputMethodKit コントローラからは `handle(charcode:keycode:mo
 cargo test
 ```
 
-本家のユニットテスト(SKKTrie_TEST, SKKKeymap_TEST など)を移植したものに加え、
-keymap → 状態機械 → エディタ → 辞書を通したセッション統合テスト
-(変換・送りあり変換・単語登録・補完・モード切替など)を含みます。
+本家のユニットテスト(SKKTrie_TEST, SKKKeymap_TEST など)の移植、
+セッション統合テスト(変換・送りあり変換・単語登録・補完・モード切替など)に加え、
+**本家の受け入れテストスイート(SKKInputSession_TEST の test.dat、400ケース)を
+そのまま再生するパリティテスト**を含み、全ケースで本家エンジンと出力が一致します。
 
 ## 本家との差分
 

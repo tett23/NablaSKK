@@ -87,6 +87,46 @@ public final class SKKSession {
         InputMode(rawValue: skk_session_input_mode(session)) ?? .hirakana
     }
 
+    /// True while the candidate window should be shown.
+    public var candidatesVisible: Bool {
+        skk_session_candidates_visible(session) == 1
+    }
+
+    /// Candidates on the current window page.
+    public var candidates: [String] {
+        (0..<skk_session_candidate_count(session)).map { index in
+            takeString(skk_session_candidate(session, index))
+        }
+    }
+
+    /// Cursor position within the current page.
+    public var candidateCursor: Int {
+        Int(skk_session_candidate_cursor(session))
+    }
+
+    /// Current page (1-based) and total page count.
+    public var candidatePage: (page: Int, count: Int) {
+        let packed = skk_session_candidate_page(session)
+        return (Int(packed >> 16), Int(packed & 0xffff))
+    }
+
+    public enum Option: Int32 {
+        case suppressNewlineOnCommit = 0
+        case inlineBackspaceImpliesCommit = 1
+        case deleteOkuriWhenQuit = 2
+        case handleRecursiveEntryAsOkuri = 3
+        case fixIntermediateConversion = 4
+        case displayShortestMatch = 5
+        case useNumericConversion = 6
+        case maxInlineCandidates = 7
+    }
+
+    /// Set an engine option (booleans take 0/1).
+    @discardableResult
+    public func setOption(_ option: Option, _ value: Int32) -> Bool {
+        skk_session_set_option(session, option.rawValue, value) == 0
+    }
+
     public func commit() {
         skk_session_commit(session)
     }
