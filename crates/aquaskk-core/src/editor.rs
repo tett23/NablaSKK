@@ -268,11 +268,11 @@ impl ComposingEditor {
 
         if ctx.entry.is_empty() {
             // Entered from direct input; may carry an undo entry
-            self.composing.insert(&ctx.undo.entry().to_string());
+            self.composing.insert(ctx.undo.entry());
         } else {
             // Entered back from conversion; restore the reading
             ctx.entry.set_okuri("", "");
-            self.composing.insert(&ctx.entry.entry_string().to_string());
+            self.composing.insert(ctx.entry.entry_string());
         }
 
         ctx.dynamic_completion = true;
@@ -486,7 +486,7 @@ impl EntryRemoveEditor {
         self.prompt = format!(
             "{} /{}/ を削除しますか？(yes/no) ",
             self.entry.entry_string(),
-            self.candidate.to_string()
+            self.candidate
         );
     }
 

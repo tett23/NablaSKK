@@ -62,14 +62,6 @@ impl Candidate {
         self.avoid_study = true;
     }
 
-    pub fn to_string(&self) -> String {
-        if self.annotation.is_empty() {
-            self.word.clone()
-        } else {
-            format!("{};{}", self.word, self.annotation)
-        }
-    }
-
     /// Escape characters that conflict with dictionary syntax.
     pub fn encode(src: &str) -> String {
         src.replace('[', "[5b]").replace('/', "[2f]").replace(';', "[3b]")
@@ -85,6 +77,17 @@ impl Candidate {
 
     pub fn decode_word(&mut self) {
         self.word = Self::decode(&self.word);
+    }
+}
+
+// Serializes back to the "word;annotation" dictionary form.
+impl std::fmt::Display for Candidate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.annotation.is_empty() {
+            write!(f, "{}", self.word)
+        } else {
+            write!(f, "{};{}", self.word, self.annotation)
+        }
     }
 }
 

@@ -315,7 +315,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
 
         let mut backend = Backend::new(LocalUserDictionary::open(&path, Encoding::Utf8));
-        backend.add_dictionary(Box::new(CommonDictionary::from_str(
+        backend.add_dictionary(Box::new(CommonDictionary::from_text(
             ";; okuri-nasi entries.\nすう /一/二/三/四/五/六/七/八/九/十/\n",
         )));
         backend

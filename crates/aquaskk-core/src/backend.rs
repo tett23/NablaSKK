@@ -189,7 +189,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
 
         let mut backend = Backend::new(LocalUserDictionary::open(&path, Encoding::Utf8));
-        backend.add_dictionary(Box::new(CommonDictionary::from_str(SYSTEM_DICT)));
+        backend.add_dictionary(Box::new(CommonDictionary::from_text(SYSTEM_DICT)));
         backend
     }
 
@@ -248,7 +248,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
 
         let mut backend = Backend::new(LocalUserDictionary::open(&path, Encoding::Utf8));
-        backend.add_dictionary(Box::new(CommonDictionary::from_str(
+        backend.add_dictionary(Box::new(CommonDictionary::from_text(
             ";; okuri-nasi entries.\nてすと /(skk-ignore-dic-word \"テスト\")/試験/\n",
         )));
 

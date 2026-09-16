@@ -221,7 +221,7 @@ impl Keymap {
     }
 }
 
-fn find<'a, T>(map: &'a HashMap<KeyState, T>, charcode: u8, keycode: u8, mods: u32) -> Option<&'a T> {
+fn find<T>(map: &HashMap<KeyState, T>, charcode: u8, keycode: u8, mods: u32) -> Option<&T> {
     // Key codes take precedence over character codes
     if let Some(value) = map.get(&KeyState::key_code(keycode.into(), mods)) {
         return Some(value);

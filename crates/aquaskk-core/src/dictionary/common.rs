@@ -32,7 +32,7 @@ impl CommonDictionary {
     }
 
     /// Build an in-memory dictionary from SKK-JISYO formatted text.
-    pub fn from_str(text: &str) -> Self {
+    pub fn from_text(text: &str) -> Self {
         let mut file = DictionaryFile::new();
         file.load_from_str(text);
         file.sort();
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn find_okuri_nasi() {
-        let dict = CommonDictionary::from_str(SAMPLE);
+        let dict = CommonDictionary::from_text(SAMPLE);
         let mut suite = CandidateSuite::new();
 
         dict.find(&Entry::from_entry("かんじ"), &mut suite);
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn find_okuri_ari_strict() {
-        let dict = CommonDictionary::from_str(SAMPLE);
+        let dict = CommonDictionary::from_text(SAMPLE);
 
         let mut entry = Entry::from_entry("つ");
         entry.set_okuri("k", "け");
@@ -202,14 +202,14 @@ mod tests {
 
     #[test]
     fn reverse() {
-        let dict = CommonDictionary::from_str(SAMPLE);
+        let dict = CommonDictionary::from_text(SAMPLE);
         assert_eq!(dict.reverse_lookup("幹事"), Some("かんじ".to_string()));
         assert_eq!(dict.reverse_lookup("ない"), None);
     }
 
     #[test]
     fn complete() {
-        let dict = CommonDictionary::from_str(SAMPLE);
+        let dict = CommonDictionary::from_text(SAMPLE);
 
         let mut helper = CompletionHelper::new("かん", 0, 0);
         dict.complete(&mut helper);

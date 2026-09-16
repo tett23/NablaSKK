@@ -41,7 +41,7 @@ impl Harness {
         std::fs::remove_file(&path).ok();
 
         let mut backend = Backend::new(LocalUserDictionary::open(&path, Encoding::Utf8));
-        backend.add_dictionary(Box::new(CommonDictionary::from_str(SYSTEM_DICT)));
+        backend.add_dictionary(Box::new(CommonDictionary::from_text(SYSTEM_DICT)));
 
         let mut converter = RomanKanaConverter::new();
         converter.load(include_str!("../../../data/kana-rule.utf8.conf"));

@@ -57,7 +57,7 @@ fn positional_kanji(
 
         let distance = bytes.len() - i;
 
-        if distance > 4 && (distance - 1) % 4 == 0 {
+        if distance > 4 && (distance - 1).is_multiple_of(4) {
             // 万/億/兆... boundary digit
             if explicit_one && d == 1 {
                 result += digits[1];
