@@ -1005,6 +1005,14 @@ impl Session {
         &self.param.backend
     }
 
+    pub fn config(&self) -> &Config {
+        &self.param.config
+    }
+
+    pub fn config_mut(&mut self) -> &mut Config {
+        &mut self.param.config
+    }
+
     pub fn backend_mut(&mut self) -> &mut Backend {
         &mut self.param.backend
     }

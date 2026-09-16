@@ -249,8 +249,10 @@ fn main() {
                 };
                 keymap.fetch(code, 0, 0)
             }
+            // Terminal backspace (0x7f) means backward delete
+            0x7f => keymap.fetch(0x08, 0, 0),
             // Printable + the control codes keymap.conf maps directly
-            0x08 | 0x09 | 0x0d | 0x7f | 0x20..=0x7e => keymap.fetch(byte, 0, 0),
+            0x08 | 0x09 | 0x0d | 0x20..=0x7e => keymap.fetch(byte, 0, 0),
             // Other control codes arrive as Ctrl+letter
             0x00..=0x1f => keymap.fetch(byte | 0x60, 0, modifier::CTRL),
             _ => continue,

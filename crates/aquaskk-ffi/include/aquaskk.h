@@ -68,6 +68,30 @@ void skk_session_commit(SkkSession *session);
 void skk_session_clear(SkkSession *session);
 void skk_session_save(SkkSession *session);
 
+/* Candidate window state (valid until the next handled event). */
+int32_t skk_session_candidates_visible(const SkkSession *session);
+int32_t skk_session_candidate_count(const SkkSession *session);
+char *skk_session_candidate(const SkkSession *session, int32_t index);
+int32_t skk_session_candidate_cursor(const SkkSession *session);
+/* Returns (page << 16) | page_count, page is 1-based. */
+int32_t skk_session_candidate_page(const SkkSession *session);
+
+/* Engine options for skk_session_set_option. */
+enum {
+    SKK_OPTION_SUPPRESS_NEWLINE_ON_COMMIT = 0,
+    SKK_OPTION_INLINE_BACKSPACE_IMPLIES_COMMIT = 1,
+    SKK_OPTION_DELETE_OKURI_WHEN_QUIT = 2,
+    SKK_OPTION_HANDLE_RECURSIVE_ENTRY_AS_OKURI = 3,
+    SKK_OPTION_FIX_INTERMEDIATE_CONVERSION = 4,
+    SKK_OPTION_DISPLAY_SHORTEST_MATCH = 5,
+    SKK_OPTION_USE_NUMERIC_CONVERSION = 6,
+    SKK_OPTION_MAX_INLINE_CANDIDATES = 7
+};
+
+/* Set an engine option. Returns 0 on success. */
+int32_t skk_session_set_option(SkkSession *session, int32_t option,
+                               int32_t value);
+
 void skk_string_free(char *str);
 
 #ifdef __cplusplus
