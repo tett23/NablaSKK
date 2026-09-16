@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/aquaskk-core", "crates/skkserv"]
+members = ["crates/aquaskk-core", "crates/skkserv", "crates/skk-cli"]
 
 [workspace.package]
 version = "0.1.0"
