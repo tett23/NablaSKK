@@ -1,0 +1,13 @@
+diff --git a/src/engine/utility/jconv_body-inl.h b/src/engine/utility/jconv_body-inl.h
+index 498843d..fc56847 100644
+--- a/src/engine/utility/jconv_body-inl.h
++++ b/src/engine/utility/jconv_body-inl.h
+@@ -748,7 +748,7 @@ void eucj_to_utf8::emit(unsigned int ucs) {
+ 
+     // we need two UCS characters
+     ucs4_to_utf8((ucs >> 16) & 0xffff, output_);
+-    ucs4_to_utf8(ucs & 0xfff, output_);
++    ucs4_to_utf8(ucs & 0xffff, output_);
+ }
+ 
+ void eucj_to_utf8::neutral(unsigned char c) {

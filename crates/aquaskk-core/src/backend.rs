@@ -11,7 +11,7 @@ use crate::numeric::NumericConverter;
 
 pub struct Backend {
     user_dictionary: LocalUserDictionary,
-    dictionaries: Vec<Box<dyn Dictionary>>,
+    dictionaries: Vec<Box<dyn Dictionary + Send>>,
     use_numeric_conversion: bool,
     enable_extended_completion: bool,
     minimum_completion_length: usize,
@@ -30,7 +30,7 @@ impl Backend {
 
     /// Add a system dictionary. Search order is the user dictionary first,
     /// then added dictionaries in order.
-    pub fn add_dictionary(&mut self, dictionary: Box<dyn Dictionary>) {
+    pub fn add_dictionary(&mut self, dictionary: Box<dyn Dictionary + Send>) {
         self.dictionaries.push(dictionary);
     }
 
@@ -44,7 +44,7 @@ impl Backend {
 
     fn each_dictionary(&self) -> impl Iterator<Item = &dyn Dictionary> {
         std::iter::once(&self.user_dictionary as &dyn Dictionary)
-            .chain(self.dictionaries.iter().map(|d| d.as_ref()))
+            .chain(self.dictionaries.iter().map(|d| d.as_ref() as &dyn Dictionary))
     }
 
     /// Complete readings beginning with `key`. `limit` == 0 means unlimited.
