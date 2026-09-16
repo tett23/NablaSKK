@@ -4,6 +4,7 @@
 
 pub mod backend;
 pub mod bridge;
+pub mod calculator;
 pub mod candidate;
 pub mod completer;
 pub mod config;

@@ -1,11 +1,19 @@
 //! SKK dictionaries (port of the `dictionary` and `backend` directories).
 
+mod auto_update;
 mod common;
+mod factory;
 mod file;
+mod gadget;
+mod proxy;
 mod user;
 
+pub use auto_update::AutoUpdateDictionary;
 pub use common::CommonDictionary;
+pub use factory::{create, DictionaryKey, DictionaryType, NullDictionary};
 pub use file::{DictionaryEntry, DictionaryFile, Encoding};
+pub use gadget::GadgetDictionary;
+pub use proxy::ProxyDictionary;
 pub use user::LocalUserDictionary;
 
 use crate::candidate::CandidateSuite;
