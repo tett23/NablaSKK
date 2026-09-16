@@ -7,6 +7,13 @@ name = "aquaskk-core"
 version = "0.1.0"
 
 [[package]]
+name = "aquaskk-ffi"
+version = "0.1.0"
+dependencies = [
+ "aquaskk-core",
+]
+
+[[package]]
 name = "skk-cli"
 version = "0.1.0"
 dependencies = [
