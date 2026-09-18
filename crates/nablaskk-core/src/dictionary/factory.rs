@@ -23,7 +23,7 @@ use crate::entry::Entry;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DictionaryType {
-    /// SKK 辞書 (EUC-JP)
+    /// SKK 辞書 (EUC-JP / UTF-8 自動判別)
     Common = 0,
     /// SKK 辞書 (自動ダウンロード)
     AutoUpdate = 1,
@@ -80,7 +80,8 @@ pub fn create(key: &DictionaryKey) -> Box<dyn Dictionary + Send> {
     let location = key.location.as_str();
 
     match key.dictionary_type {
-        DictionaryType::Common => match CommonDictionary::open(location, Encoding::EucJp) {
+        // Historically EUC-JP; now auto-detected so UTF-8 files work too
+        DictionaryType::Common => match CommonDictionary::open(location, Encoding::Auto) {
             Ok(dictionary) => Box::new(dictionary),
             Err(err) => {
                 eprintln!("dictionary::create: can't load {location}: {err}");

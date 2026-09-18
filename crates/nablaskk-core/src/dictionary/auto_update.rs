@@ -62,7 +62,7 @@ impl AutoUpdateDictionary {
         result.update();
 
         // A failed download is fine as long as a previous copy exists
-        result.dictionary = CommonDictionary::open(&result.path, Encoding::EucJp)?;
+        result.dictionary = CommonDictionary::open(&result.path, Encoding::Auto)?;
 
         Ok(result)
     }
@@ -72,7 +72,7 @@ impl AutoUpdateDictionary {
     pub fn update(&mut self) -> bool {
         match self.download() {
             Ok(true) => {
-                if let Ok(dictionary) = CommonDictionary::open(&self.path, Encoding::EucJp) {
+                if let Ok(dictionary) = CommonDictionary::open(&self.path, Encoding::Auto) {
                     self.dictionary = dictionary;
                     return true;
                 }

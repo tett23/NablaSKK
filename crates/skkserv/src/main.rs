@@ -40,8 +40,9 @@ Serves SKK dictionaries over the skkserv protocol.
 options:
   -p, --port PORT       port to listen on (default: 1178)
   -l, --listen ADDR     address to bind (default: 127.0.0.1)
-  -u, --utf8            treat subsequent dictionaries as UTF-8
-                        (default: EUC-JP)
+  -u, --utf8            force UTF-8 for subsequent dictionaries
+  -e, --euc-jp          force EUC-JP for subsequent dictionaries
+                        (default: auto-detect per file)
   -h, --help            show this help
 
 example:
@@ -53,7 +54,7 @@ example:
 fn main() {
     let mut port = 1178u16;
     let mut listen = "127.0.0.1".to_string();
-    let mut encoding = Encoding::EucJp;
+    let mut encoding = Encoding::Auto;
     let mut dictionaries: Vec<(String, Encoding)> = Vec::new();
 
     let mut args = std::env::args().skip(1);
@@ -68,6 +69,7 @@ fn main() {
                 None => usage(),
             },
             "-u" | "--utf8" => encoding = Encoding::Utf8,
+            "-e" | "--euc-jp" => encoding = Encoding::EucJp,
             "-h" | "--help" => usage(),
             path if !path.starts_with('-') => dictionaries.push((path.to_string(), encoding)),
             _ => usage(),

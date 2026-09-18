@@ -22,20 +22,57 @@ pub enum Encoding {
     EucJp,
     #[default]
     Utf8,
+    /// Detect EUC-JP vs UTF-8 per file (coding cookie, then content).
+    Auto,
 }
 
 impl Encoding {
-    fn decode(&self, bytes: &[u8]) -> String {
+    /// Determine the encoding of dictionary bytes.
+    ///
+    /// A `coding:` cookie on the first line (the ddskk convention, e.g.
+    /// ";; -*- mode: fundamental; coding: utf-8 -*-") wins; otherwise the
+    /// content decides: valid UTF-8 is UTF-8, anything else is EUC-JP.
+    /// Pure ASCII resolves to UTF-8, which decodes identically either way.
+    pub fn detect(bytes: &[u8]) -> Encoding {
+        let first_line = bytes.split(|&b| b == b'\n').next().unwrap_or(&[]);
+        let first_line = String::from_utf8_lossy(first_line).to_ascii_lowercase();
+
+        if let Some(pos) = first_line.find("coding:") {
+            let value = first_line[pos + "coding:".len()..].trim_start();
+            if value.starts_with("utf-8") || value.starts_with("utf8") {
+                return Encoding::Utf8;
+            }
+            if value.starts_with("euc") {
+                return Encoding::EucJp;
+            }
+        }
+
+        if std::str::from_utf8(bytes).is_ok() {
+            Encoding::Utf8
+        } else {
+            Encoding::EucJp
+        }
+    }
+
+    /// Resolve `Auto` against actual bytes; concrete encodings unchanged.
+    pub fn resolve(&self, bytes: &[u8]) -> Encoding {
         match self {
+            Encoding::Auto => Encoding::detect(bytes),
+            other => *other,
+        }
+    }
+
+    fn decode(&self, bytes: &[u8]) -> String {
+        match self.resolve(bytes) {
             Encoding::EucJp => jconv::utf8_from_eucj(bytes),
-            Encoding::Utf8 => String::from_utf8_lossy(bytes).into_owned(),
+            _ => String::from_utf8_lossy(bytes).into_owned(),
         }
     }
 
     fn encode(&self, text: &str) -> Vec<u8> {
         match self {
             Encoding::EucJp => jconv::eucj_from_utf8(text),
-            Encoding::Utf8 => text.as_bytes().to_vec(),
+            _ => text.as_bytes().to_vec(),
         }
     }
 }
@@ -193,6 +230,51 @@ mod tests {
         assert_eq!(reloaded.okuri_nasi(), file.okuri_nasi());
 
         std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn detect_by_coding_cookie() {
+        let utf8 = b";; -*- mode: fundamental; coding: utf-8 -*-\n";
+        assert_eq!(Encoding::detect(utf8), Encoding::Utf8);
+
+        let eucj = b";; -*- mode: fundamental; coding: euc-jp -*-\n";
+        assert_eq!(Encoding::detect(eucj), Encoding::EucJp);
+
+        // The cookie wins even when the body would sniff differently
+        let mut mixed = b";; coding: euc-jp\n".to_vec();
+        mixed.extend_from_slice("かんじ /漢字/\n".as_bytes());
+        assert_eq!(Encoding::detect(&mixed), Encoding::EucJp);
+    }
+
+    #[test]
+    fn detect_by_content() {
+        assert_eq!(Encoding::detect("かんじ /漢字/\n".as_bytes()), Encoding::Utf8);
+        assert_eq!(
+            Encoding::detect(&crate::jconv::eucj_from_utf8("かんじ /漢字/\n")),
+            Encoding::EucJp
+        );
+        // Pure ASCII decodes identically either way
+        assert_eq!(Encoding::detect(b";; empty dictionary\n"), Encoding::Utf8);
+    }
+
+    #[test]
+    fn auto_loads_both_encodings() {
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
+        std::fs::create_dir_all(&dir).unwrap();
+
+        for (name, encoding) in [("auto-euc", Encoding::EucJp), ("auto-utf8", Encoding::Utf8)] {
+            let path = dir.join(name);
+
+            let mut file = DictionaryFile::new();
+            file.load_from_str(SAMPLE);
+            file.save(&path, encoding).unwrap();
+
+            let mut reloaded = DictionaryFile::new();
+            reloaded.load(&path, Encoding::Auto).unwrap();
+            assert_eq!(reloaded.okuri_nasi(), file.okuri_nasi(), "{name}");
+
+            std::fs::remove_file(&path).ok();
+        }
     }
 
     #[test]

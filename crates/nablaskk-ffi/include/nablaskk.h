@@ -19,7 +19,7 @@ typedef struct SkkSession SkkSession;
 
 /* Dictionary types (DictionarySet numbering of the original AquaSKK). */
 enum {
-    SKK_DICT_COMMON = 0,      /* SKK-JISYO, EUC-JP */
+    SKK_DICT_COMMON = 0,      /* SKK-JISYO, EUC-JP / UTF-8 auto-detected */
     SKK_DICT_AUTO_UPDATE = 1, /* "host url path", downloaded over HTTP */
     SKK_DICT_PROXY = 2,       /* "host:port" of a running skkserv */
     SKK_DICT_GADGET = 4,      /* today/now/=expr dynamic candidates */

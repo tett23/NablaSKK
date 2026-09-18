@@ -40,16 +40,27 @@ fn find_entry(container: &[DictionaryEntry], query: &str) -> Option<usize> {
 
 impl LocalUserDictionary {
     /// Open (or create) a user dictionary. A missing file is not an error.
+    /// `Encoding::Auto` resolves against the existing file (a new file is
+    /// UTF-8), and saves keep whatever encoding the file already had.
     pub fn open(path: impl AsRef<Path>, encoding: Encoding) -> Self {
         let mut file = DictionaryFile::new();
+        let mut encoding = encoding;
 
         if path.as_ref().exists() {
+            if encoding == Encoding::Auto {
+                encoding = std::fs::read(&path)
+                    .map(|bytes| Encoding::detect(&bytes))
+                    .unwrap_or(Encoding::Utf8);
+            }
+
             if let Err(err) = file.load(&path, encoding) {
                 eprintln!(
                     "LocalUserDictionary: can't load file {}: {err}",
                     path.as_ref().display()
                 );
             }
+        } else if encoding == Encoding::Auto {
+            encoding = Encoding::Utf8;
         }
 
         let mut dictionary = Self {
@@ -305,6 +316,41 @@ mod tests {
         let mut suite = CandidateSuite::new();
         dict.find(&Entry::from_entry("すらっしゅ"), &mut suite);
         assert_eq!(suite.candidates()[0].word(), "a/b");
+    }
+
+    #[test]
+    fn auto_keeps_eucj_on_save() {
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("user-auto-eucj");
+        std::fs::remove_file(&path).ok();
+
+        // Seed an EUC-JP user dictionary
+        let mut file = DictionaryFile::new();
+        file.load_from_str(";; okuri-ari entries.\n;; okuri-nasi entries.\nかんじ /漢字/\n");
+        file.save(&path, Encoding::EucJp).unwrap();
+
+        {
+            let mut dict = LocalUserDictionary::open(&path, Encoding::Auto);
+
+            let mut suite = CandidateSuite::new();
+            dict.find(&Entry::from_entry("かんじ"), &mut suite);
+            assert_eq!(suite.candidates()[0].word(), "漢字");
+
+            dict.register(&Entry::from_entry("いみ"), &Candidate::new("意味"));
+        } // Drop saves
+
+        // Still EUC-JP on disk, with both entries intact
+        let bytes = std::fs::read(&path).unwrap();
+        assert_eq!(Encoding::detect(&bytes), Encoding::EucJp);
+        assert!(std::str::from_utf8(&bytes).is_err());
+
+        let dict = LocalUserDictionary::open(&path, Encoding::Auto);
+        let mut suite = CandidateSuite::new();
+        dict.find(&Entry::from_entry("いみ"), &mut suite);
+        assert_eq!(suite.candidates()[0].word(), "意味");
+
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]

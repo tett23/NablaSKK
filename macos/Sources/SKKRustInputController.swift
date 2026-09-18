@@ -34,17 +34,19 @@ enum Engine {
     }()
 
     /// dictionaries.conf: one "type location" per line
-    /// (0=EUC-JP file, 1=auto-update "host url path", 2=skkserv host:port,
-    ///  4=gadget, 5=UTF-8 file). Created with defaults on first launch.
+    /// (0=SKK-JISYO with encoding auto-detection, 1=auto-update
+    ///  "host url path", 2=skkserv host:port, 4=gadget, 5=UTF-8 forced).
+    /// Created with defaults on first launch.
     private static func loadDictionaries(into session: SKKSession) {
         let config = supportDirectory.appendingPathComponent("dictionaries.conf")
 
         if !FileManager.default.fileExists(atPath: config.path) {
             var template = """
             # NablaSKK dictionaries: "type location" per line.
-            #   0 = SKK-JISYO (EUC-JP)   1 = auto-update "host url path"
+            #   0 = SKK-JISYO (encoding auto-detected)
+            #   1 = auto-update "host url path"
             #   2 = skkserv host:port    4 = gadget (today/now/=expr)
-            #   5 = SKK-JISYO (UTF-8)
+            #   5 = SKK-JISYO (UTF-8 forced)
             # Add your main dictionary, e.g.:
             #   0 /usr/local/share/skk/SKK-JISYO.L
             4

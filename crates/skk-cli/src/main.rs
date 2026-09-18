@@ -118,7 +118,8 @@ fn usage() -> ! {
 Interactive SKK session in the terminal. Ctrl-C quits.
 
 options:
-  -u, --utf8            treat subsequent dictionaries as UTF-8 (default EUC-JP)
+  -u, --utf8            force UTF-8 for subsequent dictionaries
+  -e, --euc-jp          force EUC-JP (default: auto-detect per file)
   --user PATH           user dictionary (default: ~/.rust-skk-jisyo)
   -h, --help            show this help"
     );
@@ -136,7 +137,7 @@ fn mode_label(mode: InputMode) -> &'static str {
 }
 
 fn main() {
-    let mut encoding = Encoding::EucJp;
+    let mut encoding = Encoding::Auto;
     let mut dictionaries: Vec<(String, Encoding)> = Vec::new();
     let mut user_path: Option<String> = None;
 
@@ -144,6 +145,7 @@ fn main() {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-u" | "--utf8" => encoding = Encoding::Utf8,
+            "-e" | "--euc-jp" => encoding = Encoding::EucJp,
             "--user" => match args.next() {
                 Some(path) => user_path = Some(path),
                 None => usage(),

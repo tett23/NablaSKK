@@ -116,8 +116,8 @@ pub unsafe extern "C" fn skk_session_free(session: *mut SkkSession) {
 }
 
 /// Add a system dictionary. `dictionary_type` uses the original
-/// DictionarySet numbering (0=EUC-JP, 1=auto-update, 2=skkserv,
-/// 4=gadget, 5=UTF-8). Returns 0 on success.
+/// DictionarySet numbering (0=SKK-JISYO with EUC-JP/UTF-8 auto-detection,
+/// 1=auto-update, 2=skkserv, 4=gadget, 5=UTF-8 forced). Returns 0 on success.
 ///
 /// # Safety
 /// `session` must be a valid session pointer; `location` a valid C string.

@@ -33,9 +33,10 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    4
    ```
 
-   1行が「タイプ 場所」で、0=SKK-JISYO(EUC-JP)、1=自動ダウンロード
-   ("host url path")、2=skkserv(host:port)、4=Gadget(today/now/=式)、
-   5=SKK-JISYO(UTF-8)。変更後は `pkill NablaSKK` で再読み込みされます。
+   1行が「タイプ 場所」で、0=SKK-JISYO(EUC-JP/UTF-8 自動判別)、
+   1=自動ダウンロード("host url path")、2=skkserv(host:port)、
+   4=Gadget(today/now/=式)、5=SKK-JISYO(UTF-8 固定)。
+   変更後は `pkill NablaSKK` で再読み込みされます。
 
 ユーザー辞書は `~/Library/Application Support/NablaSKK/skk-jisyo`
 (UTF-8)に保存されます。
@@ -108,9 +109,11 @@ skkserv プロトコル(ポート 1178)を話す辞書サーバーです。通�
 ```sh
 cargo build --release
 ./target/release/skkserv -p 1178 /usr/share/skk/SKK-JISYO.L
-# UTF-8 辞書の場合
-./target/release/skkserv -u -p 1178 SKK-JISYO.utf8
 ```
+
+辞書のエンコーディング(EUC-JP / UTF-8)はファイルごとに自動判別されます
+(先頭行の `coding:` クッキー優先、なければ内容で判定)。
+`-e` / `-u` で強制指定もできます。
 
 本家では未実装だったサーバー補完(コマンド `4`)にも対応しています。
 
@@ -156,6 +159,9 @@ cargo test
 
 ## 本家との差分
 
+- 辞書ファイルのエンコーディングは EUC-JP に加えて UTF-8 に対応し、
+  ファイルごとに自動判別します(`coding:` クッキー → 内容判定の順。
+  ユーザー辞書は既存ファイルのエンコーディングを保存時も維持します)。
 - 文字コード変換は encoding ライブラリを使わず、本家の
   EUC-JISX0213 ⇔ Unicode 対応表から生成したテーブル
   (`src/jconv/eucjp_tables.rs`)で実装しています。
