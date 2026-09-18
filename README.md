@@ -146,6 +146,26 @@ macOS の InputMethodKit コントローラからは `handle(charcode:keycode:mo
 の戻り値と `takeFixed()` / `composing` を `insertText` / `setMarkedText`
 に橋渡しする形で組み込めます。
 
+## CI / リリース
+
+GitHub Actions(`.github/workflows/ci.yml`)が push / PR ごとに
+テスト(受け入れ400ケース含む)・clippy・Swiftスモークテストを実行し、
+ビルド済みアーティファクトを生成します:
+
+- `NablaSKK-macos-universal.app.zip` — 入力メソッド本体(arm64 + x86_64)
+- `nablaskk-tools-macos-universal.tar.gz` / `nablaskk-tools-linux-x86_64.tar.gz`
+  — skkserv と skk-cli
+- `nablaskk-ffi-macos-universal.tar.gz` — libnablaskk_ffi.a + nablaskk.h +
+  SKKSession.swift(Swift 組み込み用)
+
+`v*` タグを push すると、これらを添付したドラフトリリースが作成されます:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+ローカルでユニバーサル版アプリを作るには `UNIVERSAL=1 sh macos/build-app.sh`。
+
 ## テスト
 
 ```sh

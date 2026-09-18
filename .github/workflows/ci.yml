@@ -2,9 +2,14 @@ name: CI
 
 on:
   push:
+    branches: ['**']
+    tags: ['v*']
   pull_request:
 
 jobs:
+  # ==================================================================
+  # Tests (includes the 400-case acceptance suite)
+  # ==================================================================
   test:
     strategy:
       matrix:
@@ -12,6 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
       - name: cargo test
         run: cargo test --workspace
       - name: cargo clippy
@@ -19,6 +25,89 @@ jobs:
       - name: Swift FFI smoke test
         if: runner.os == 'macOS'
         run: sh swift/run-smoke-test.sh
-      - name: Build macOS input method
-        if: runner.os == 'macOS'
-        run: sh macos/build-app.sh
+
+  # ==================================================================
+  # Build artifacts
+  # ==================================================================
+  build-linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release binaries
+        run: cargo build --release -p skkserv -p skk-cli
+      - name: Package
+        run: |
+          mkdir -p dist
+          tar -C target/release -czf dist/nablaskk-tools-linux-x86_64.tar.gz \
+              skkserv skk-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nablaskk-tools-linux-x86_64
+          path: dist/nablaskk-tools-linux-x86_64.tar.gz
+
+  build-macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Add Rust targets
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build NablaSKK.app (universal)
+        run: UNIVERSAL=1 sh macos/build-app.sh
+
+      - name: Build CLI tools (universal)
+        run: |
+          cargo build --release -p skkserv -p skk-cli --target aarch64-apple-darwin
+          cargo build --release -p skkserv -p skk-cli --target x86_64-apple-darwin
+          mkdir -p target/universal
+          for bin in skkserv skk-cli; do
+            lipo -create \
+              "target/aarch64-apple-darwin/release/$bin" \
+              "target/x86_64-apple-darwin/release/$bin" \
+              -output "target/universal/$bin"
+          done
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          ditto -c -k --keepParent macos/dist/NablaSKK.app dist/NablaSKK-macos-universal.app.zip
+          tar -C target/universal -czf dist/nablaskk-tools-macos-universal.tar.gz \
+              skkserv skk-cli
+          mkdir -p ffi
+          lipo -create \
+            target/aarch64-apple-darwin/release/libnablaskk_ffi.a \
+            target/x86_64-apple-darwin/release/libnablaskk_ffi.a \
+            -output ffi/libnablaskk_ffi.a
+          cp crates/nablaskk-ffi/include/nablaskk.h swift/SKKSession.swift ffi/
+          tar -czf dist/nablaskk-ffi-macos-universal.tar.gz -C ffi \
+              libnablaskk_ffi.a nablaskk.h SKKSession.swift
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nablaskk-macos-universal
+          path: dist/*
+
+  # ==================================================================
+  # Release (tags v*)
+  # ==================================================================
+  release:
+    needs: [build-linux, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: dist/*
