@@ -13,9 +13,18 @@ Rust で再実装したものです。外部クレート依存はありません
 
 ### macOS 入力メソッド (NablaSKK.app)
 
+最も簡単なのはインストールスクリプトです(最新リリースを取得):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tett23/NablaSKK/main/install.sh | sh
+```
+
+curl 経由のダウンロードには検疫属性が付かないため、無署名でも
+Gatekeeper の警告は出ません。ソースからビルドする場合:
+
 ```sh
 git clone https://github.com/tett23/NablaSKK
-cd nablaskk
+cd NablaSKK
 sh macos/build-app.sh
 cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
 ```
@@ -50,15 +59,19 @@ rm -rf ~/Library/Application\ Support/NablaSKK   # 設定・ユーザー辞書�
 
 ### Gatekeeper の警告について
 
-リリースのアーティファクトは現状 ad-hoc 署名のため、ダウンロードした
-アプリを開くと「悪質なソフトウェアかどうかを確認できません」と
-表示されます。インストール後に一度だけ検疫属性を外してください:
+リリースのアーティファクトは ad-hoc 署名です。Gatekeeper の検証は
+「検疫属性が付いたファイル」にのみ走るため、警告が出るかどうかは
+入手経路で決まります:
 
-```sh
-xattr -dr com.apple.quarantine ~/Library/Input\ Methods/NablaSKK.app
-```
+- **インストールスクリプト / curl / ソースビルド** — 検疫属性が
+  付かないため警告は出ません(推奨)
+- **ブラウザで zip をダウンロード** — 警告が出ます。インストール後に
+  一度だけ検疫属性を外してください:
 
-自分でビルドした場合(`sh macos/build-app.sh`)はこの操作は不要です。
+  ```sh
+  xattr -dr com.apple.quarantine ~/Library/Input\ Methods/NablaSKK.app
+  ```
+
 Developer ID 証明書がある場合は、リポジトリシークレット
 (`MACOS_CERT_P12` ほか、`.github/workflows/ci.yml` のコメント参照)を
 設定すると CI が署名+公証まで行い、警告なしで配布できます。
