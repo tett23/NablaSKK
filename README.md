@@ -3,6 +3,66 @@
 [AquaSKK](https://github.com/codefirst/aquaskk) の入力エンジン(C++ 約22,000行)を
 Rust で再実装したものです。外部クレート依存はありません(zero dependencies)。
 
+## インストール
+
+### 必要なもの
+
+- [Rust](https://rustup.rs/)(stable。ビルドのみに使用)
+- macOS 入力メソッド / Swift 連携を使う場合: macOS 12 以降と
+  Xcode Command Line Tools(`xcode-select --install`)
+
+### macOS 入力メソッド (AquaSKK-Rust.app)
+
+```sh
+git clone https://github.com/tett23/aquaskk-rust
+cd aquaskk-rust
+sh macos/build-app.sh
+cp -r macos/dist/AquaSKK-Rust.app ~/Library/Input\ Methods/
+```
+
+1. 一度ログアウトして再ログインします(既に旧版が動いている場合は
+   `pkill AquaSKKRust` でも可)
+2. 「システム設定 → キーボード → 入力ソース → 編集 → +」で
+   「日本語」から **AquaSKK-Rust** を追加します
+3. 辞書は `~/Library/Application Support/AquaSKK-Rust/dictionaries.conf`
+   で設定します(初回起動時に生成。既存 AquaSKK の SKK-JISYO.L が
+   あれば自動で利用します)。例:
+
+   ```
+   0 /usr/local/share/skk/SKK-JISYO.L
+   4
+   ```
+
+   1行が「タイプ 場所」で、0=SKK-JISYO(EUC-JP)、1=自動ダウンロード
+   ("host url path")、2=skkserv(host:port)、4=Gadget(today/now/=式)、
+   5=SKK-JISYO(UTF-8)。変更後は `pkill AquaSKKRust` で再読み込みされます。
+
+ユーザー辞書は `~/Library/Application Support/AquaSKK-Rust/skk-jisyo`
+(UTF-8)に保存されます。
+
+アンインストールは入力ソースから削除した上で:
+
+```sh
+rm -rf ~/Library/Input\ Methods/AquaSKK-Rust.app
+rm -rf ~/Library/Application\ Support/AquaSKK-Rust   # 設定・ユーザー辞書ごと消す場合
+```
+
+### skkserv / skk-cli (コマンドラインツール)
+
+```sh
+cargo install --path crates/skkserv   # SKK 辞書サーバー
+cargo install --path crates/skk-cli   # ターミナル用デモ
+```
+
+`~/.cargo/bin` に入ります。`cargo build --release` して
+`target/release/` のバイナリを直接使っても構いません。
+
+### ライブラリとして使う
+
+Rust からは `aquaskk-core` をパス依存で、Swift / Objective-C からは
+`aquaskk-ffi`(staticlib / cdylib + `include/aquaskk.h`)を
+リンクして使います。詳細は後述の各節を参照してください。
+
 ## 構成
 
 ```
@@ -64,18 +124,10 @@ cargo run --release -p skk-cli -- /usr/share/skk/SKK-JISYO.L
 
 ### macOS 入力メソッド (AquaSKK-Rust.app)
 
-InputMethodKit 製の実際に使える IME です。
-
-```sh
-sh macos/build-app.sh
-cp -r macos/dist/AquaSKK-Rust.app ~/Library/Input\ Methods/
-```
-
-インストール後、ログインし直して「システム設定 → キーボード → 入力ソース」で
-AquaSKK-Rust を追加してください。辞書は
-`~/Library/Application Support/AquaSKK-Rust/dictionaries.conf` で設定します
-(初回起動時に生成。既存 AquaSKK の SKK-JISYO.L があれば自動で利用します)。
-候補ウィンドウはマークテキスト内へのインライン描画で、a/s/d/f/j/k/l で選択できます。
+InputMethodKit 製の実際に使える IME です(インストール手順は上記
+「[インストール](#インストール)」参照)。NSEvent をエンジンイベントへ
+変換して FFI 越しに Rust のセッションを駆動します。候補ウィンドウは
+マークテキスト内へのインライン描画で、a/s/d/f/j/k/l で選択できます。
 
 ### aquaskk-ffi + Swift
 
