@@ -1,8 +1,10 @@
 #!/bin/sh
 # Build NablaSKK.app (macOS input method).
 #
-#   sh macos/build-app.sh                # host architecture
+#   sh macos/build-app.sh                # host architecture, ad-hoc signed
 #   UNIVERSAL=1 sh macos/build-app.sh   # arm64 + x86_64 universal binary
+#   SIGN_IDENTITY="Developer ID Application: ..." sh macos/build-app.sh
+#                                        # hardened-runtime Developer ID signing
 #
 # Output: macos/dist/NablaSKK.app
 # Install: cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
@@ -65,8 +67,15 @@ fi
 cp macos/Info.plist "$CONTENTS/Info.plist"
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 
-echo "==> ad-hoc code signing"
-codesign --force --sign - "$APP"
+# Developer ID signing when SIGN_IDENTITY is set; ad-hoc otherwise.
+SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+if [ "$SIGN_IDENTITY" = "-" ]; then
+    echo "==> ad-hoc code signing"
+    codesign --force --sign - "$APP"
+else
+    echo "==> code signing as: $SIGN_IDENTITY"
+    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+fi
 
 echo "==> done: $APP"
 lipo -info "$CONTENTS/MacOS/NablaSKK" 2>/dev/null || true

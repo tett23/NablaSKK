@@ -50,14 +50,54 @@ jobs:
   build-macos:
     needs: test
     runs-on: macos-latest
+    # Optional Developer ID signing + notarization: set these repository
+    # secrets and the app is signed and notarized; otherwise it is ad-hoc
+    # signed (users must clear quarantine, see README).
+    #   MACOS_CERT_P12       - base64 of the Developer ID Application .p12
+    #   MACOS_CERT_PASSWORD  - password of the .p12
+    #   MACOS_SIGN_IDENTITY  - e.g. "Developer ID Application: Name (TEAMID)"
+    #   NOTARY_APPLE_ID / NOTARY_TEAM_ID / NOTARY_PASSWORD
+    #                        - Apple ID, team id, app-specific password
+    env:
+      MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+      NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+      NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - name: Add Rust targets
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
+      - name: Import Developer ID certificate
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          echo "$MACOS_CERT_P12" | base64 -d > cert.p12
+          security create-keychain -p ci-keychain build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p ci-keychain build.keychain
+          security set-keychain-settings -lut 3600 build.keychain
+          security import cert.p12 -k build.keychain \
+              -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: \
+              -s -k ci-keychain build.keychain
+          rm cert.p12
+
       - name: Build NablaSKK.app (universal)
-        run: UNIVERSAL=1 sh macos/build-app.sh
+        run: UNIVERSAL=1 SIGN_IDENTITY="${MACOS_SIGN_IDENTITY:--}" sh macos/build-app.sh
+
+      - name: Notarize and staple
+        if: env.MACOS_CERT_P12 != '' && env.NOTARY_APPLE_ID != ''
+        run: |
+          ditto -c -k --keepParent macos/dist/NablaSKK.app notarize.zip
+          xcrun notarytool submit notarize.zip \
+              --apple-id "$NOTARY_APPLE_ID" \
+              --team-id "$NOTARY_TEAM_ID" \
+              --password "$NOTARY_PASSWORD" \
+              --wait
+          xcrun stapler staple macos/dist/NablaSKK.app
 
       - name: Build CLI tools (universal)
         run: |

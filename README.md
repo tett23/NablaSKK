@@ -48,6 +48,24 @@ rm -rf ~/Library/Input\ Methods/NablaSKK.app
 rm -rf ~/Library/Application\ Support/NablaSKK   # 設定・ユーザー辞書ごと消す場合
 ```
 
+### Gatekeeper の警告について
+
+リリースのアーティファクトは現状 ad-hoc 署名のため、ダウンロードした
+アプリを開くと「悪質なソフトウェアかどうかを確認できません」と
+表示されます。インストール後に一度だけ検疫属性を外してください:
+
+```sh
+xattr -dr com.apple.quarantine ~/Library/Input\ Methods/NablaSKK.app
+```
+
+自分でビルドした場合(`sh macos/build-app.sh`)はこの操作は不要です。
+Developer ID 証明書がある場合は、リポジトリシークレット
+(`MACOS_CERT_P12` ほか、`.github/workflows/ci.yml` のコメント参照)を
+設定すると CI が署名+公証まで行い、警告なしで配布できます。
+ローカルでは `SIGN_IDENTITY="Developer ID Application: ..." sh
+macos/build-app.sh` で署名し、`xcrun notarytool submit --wait` →
+`xcrun stapler staple` で公証します。
+
 ### skkserv / skk-cli (コマンドラインツール)
 
 ```sh
