@@ -1,0 +1,57 @@
+NOTICE
+======
+
+aquaskk-rust is a Rust reimplementation (port) of the AquaSKK input
+method engine:
+
+    AquaSKK — MacOS X implementation of the SKK input method
+    https://github.com/codefirst/aquaskk
+    Copyright (C) 2002-2004 phonohawk
+    Copyright (C) 2005-2013 Tomotaka SUWA <tomotaka.suwa@gmail.com>
+    and the AquaSKK contributors (see the upstream AUTHORS file)
+    License: GNU General Public License v2 or later
+
+The engine architecture, state machine, editors, dictionary handling,
+keymap format, configuration files (kana-rule.conf, keymap.conf and the
+other files under data/), and the acceptance test data
+(crates/aquaskk-core/testdata/session_test.dat) are ports of, or taken
+from, the upstream AquaSKK sources. This project is distributed under
+the same license (see LICENSE).
+
+Portions derived from third-party work bundled with AquaSKK:
+
+  * jconv — Japanese character code conversion library
+    Copyright (c) 2006 Tomotaka SUWA
+    Portions copyright (c) 2000-2003 Shiro Kawai (from Gauche)
+    BSD-style license. The EUC-JP codec tables in
+    crates/aquaskk-core/src/jconv/eucjp_tables.rs are generated from
+    the EUC-JISX0213 (JIS X 0213:2000 Appendix 3) vs Unicode mapping
+    table: Copyright (C) 2001 earthian@tama.or.jp, All Rights Reserved;
+    Copyright (C) 2001 I'O, All Rights Reserved
+    ("You can use, modify, distribute this table freely.")
+
+  * GenericStateMachine — Generic State Machine Library for C++
+    Copyright (c) 2006-2008 Tomotaka SUWA
+    BSD-style license. Ported to Rust as
+    crates/aquaskk-core/src/machine.rs.
+
+  * The SKK dictionary format and the SKK input method itself originate
+    from SKK (Simple Kana to Kanji conversion program) by Masahiko Sato
+    and the SKK Development Team (https://skk-dev.github.io/dict/).
+
+Acknowledgements / 謝辞
+-----------------------
+
+This port would not exist without the original AquaSKK. Thanks to
+phonohawk, who started AquaSKK; to Tomotaka SUWA, whose clean engine
+design — including the test suite this port replays for parity — made a
+faithful reimplementation possible; to S.Abe and all AquaSKK
+contributors; and to Masahiko Sato and the SKK community, who created
+and have maintained the SKK input method and its dictionaries for
+decades.
+
+本プロジェクトは AquaSKK なしには存在しませんでした。AquaSKK を生み出した
+phonohawk 氏、テストスイートまで含む明快なエンジン設計によって忠実な
+再実装を可能にしてくれた Tomotaka SUWA 氏、S.Abe 氏をはじめとする
+AquaSKK コントリビュータの皆さん、そして SKK と辞書を長年にわたり
+作り育ててきた佐藤雅彦氏と SKK コミュニティに感謝します。

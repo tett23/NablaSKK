@@ -169,6 +169,7 @@ cargo test
   正しくは `0xffff`。か゚等の JIS X 0213 合成かなが壊れる)は修正済みです。
   本家向けの修正パッチを `upstream-patches/` に置いてあります。
 
-## ライセンス
+## ライセンスと謝辞
 
-GNU GPL v2 or later(本家 AquaSKK に準じます)。
+GNU GPL v2 or later(本家 AquaSKK に準じます)。由来と謝辞は
+[NOTICE](NOTICE) を参照してください。
