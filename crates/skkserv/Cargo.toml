@@ -1,10 +1,10 @@
 [package]
 name = "skkserv"
-description = "SKK dictionary server backed by aquaskk-core"
+description = "SKK dictionary server backed by nablaskk-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [dependencies]
-aquaskk-core = { path = "../aquaskk-core" }
+nablaskk-core = { path = "../nablaskk-core" }

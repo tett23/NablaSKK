@@ -1,10 +1,10 @@
 [package]
 name = "skk-cli"
-description = "Interactive terminal demo of the aquaskk-core SKK engine"
+description = "Interactive terminal demo of the nablaskk-core SKK engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [dependencies]
-aquaskk-core = { path = "../aquaskk-core" }
+nablaskk-core = { path = "../nablaskk-core" }

@@ -1,4 +1,4 @@
-/* C ABI for aquaskk-core (Rust reimplementation of the AquaSKK engine).
+/* C ABI for nablaskk-core (Rust reimplementation of the AquaSKK engine).
  *
  * All strings are NUL-terminated UTF-8. Strings returned by skk_*
  * functions are owned by the caller: release them with skk_string_free.
@@ -6,8 +6,8 @@
  * License: GPL-2.0-or-later.
  */
 
-#ifndef AQUASKK_H
-#define AQUASKK_H
+#ifndef NABLASKK_H
+#define NABLASKK_H
 
 #include <stdint.h>
 
@@ -98,4 +98,4 @@ void skk_string_free(char *str);
 }
 #endif
 
-#endif /* AQUASKK_H */
+#endif /* NABLASKK_H */

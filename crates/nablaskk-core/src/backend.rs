@@ -194,7 +194,7 @@ mod tests {
 ";
 
     fn temp_backend(name: &str) -> Backend {
-        let dir = std::env::temp_dir().join("aquaskk-core-test");
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(name);
         std::fs::remove_file(&path).ok();
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn ignore_dic_word() {
-        let dir = std::env::temp_dir().join("aquaskk-core-test");
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("backend-ignore");
         std::fs::remove_file(&path).ok();

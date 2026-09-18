@@ -248,7 +248,7 @@ mod tests {
     use super::*;
 
     fn temp_dict(name: &str) -> LocalUserDictionary {
-        let dir = std::env::temp_dir().join("aquaskk-core-test");
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(name);
         std::fs::remove_file(&path).ok();
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn save_and_reload() {
-        let dir = std::env::temp_dir().join("aquaskk-core-test");
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("user-save");
         std::fs::remove_file(&path).ok();

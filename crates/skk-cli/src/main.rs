@@ -1,18 +1,18 @@
-//! skk-cli: type SKK in your terminal, backed by aquaskk-core.
+//! skk-cli: type SKK in your terminal, backed by nablaskk-core.
 //!
 //! Runs the real input session (state machine, editors, dictionaries)
 //! against raw terminal input. Ctrl-C quits.
 
-use aquaskk_core::backend::Backend;
-use aquaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, NullWidgets};
-use aquaskk_core::candidate::Candidate;
-use aquaskk_core::config::Config;
-use aquaskk_core::dictionary::{CommonDictionary, Encoding, LocalUserDictionary};
-use aquaskk_core::event::modifier;
-use aquaskk_core::input_mode::InputMode;
-use aquaskk_core::keymap::Keymap;
-use aquaskk_core::session::{Session, SessionParameter};
-use aquaskk_core::trie::RomanKanaConverter;
+use nablaskk_core::backend::Backend;
+use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, NullWidgets};
+use nablaskk_core::candidate::Candidate;
+use nablaskk_core::config::Config;
+use nablaskk_core::dictionary::{CommonDictionary, Encoding, LocalUserDictionary};
+use nablaskk_core::event::modifier;
+use nablaskk_core::input_mode::InputMode;
+use nablaskk_core::keymap::Keymap;
+use nablaskk_core::session::{Session, SessionParameter};
+use nablaskk_core::trie::RomanKanaConverter;
 
 use std::cell::RefCell;
 use std::io::{Read, Write};

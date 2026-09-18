@@ -1,5 +1,5 @@
 [package]
-name = "aquaskk-core"
+name = "nablaskk-core"
 description = "Rust reimplementation of the AquaSKK input method engine"
 version.workspace = true
 edition.workspace = true

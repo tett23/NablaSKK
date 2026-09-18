@@ -19,11 +19,11 @@
 //!   '3'          host info  -> "host:addr: "
 //!   '4' key ' '  completion -> "1/comp1/comp2/\n" or "4key\n"
 
-use aquaskk_core::backend::Backend;
-use aquaskk_core::candidate::CandidateSuite;
-use aquaskk_core::dictionary::{CommonDictionary, Encoding, LocalUserDictionary};
-use aquaskk_core::entry::Entry;
-use aquaskk_core::jconv;
+use nablaskk_core::backend::Backend;
+use nablaskk_core::candidate::CandidateSuite;
+use nablaskk_core::dictionary::{CommonDictionary, Encoding, LocalUserDictionary};
+use nablaskk_core::entry::Entry;
+use nablaskk_core::jconv;
 
 use std::io::{BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};

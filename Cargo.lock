@@ -3,26 +3,26 @@
 version = 4
 
 [[package]]
-name = "aquaskk-core"
+name = "nablaskk-core"
 version = "0.1.0"
 
 [[package]]
-name = "aquaskk-ffi"
+name = "nablaskk-ffi"
 version = "0.1.0"
 dependencies = [
- "aquaskk-core",
+ "nablaskk-core",
 ]
 
 [[package]]
 name = "skk-cli"
 version = "0.1.0"
 dependencies = [
- "aquaskk-core",
+ "nablaskk-core",
 ]
 
 [[package]]
 name = "skkserv"
 version = "0.1.0"
 dependencies = [
- "aquaskk-core",
+ "nablaskk-core",
 ]

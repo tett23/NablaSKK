@@ -1,10 +1,10 @@
-// Swift wrapper over the aquaskk-ffi C ABI.
+// Swift wrapper over the nablaskk-ffi C ABI.
 //
 // Build against the Rust library:
 //   cargo build --release
-//   swiftc -import-objc-header crates/aquaskk-ffi/include/aquaskk.h \
+//   swiftc -import-objc-header crates/nablaskk-ffi/include/nablaskk.h \
 //          swift/SKKSession.swift your-code.swift \
-//          target/release/libaquaskk_ffi.a
+//          target/release/libnablaskk_ffi.a
 //
 // License: GPL-2.0-or-later.
 

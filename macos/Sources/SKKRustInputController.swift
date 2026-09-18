@@ -1,4 +1,4 @@
-// AquaSKK-Rust: InputMethodKit controller bridging to the Rust engine.
+// NablaSKK: InputMethodKit controller bridging to the Rust engine.
 //
 // New Swift implementation, written with reference to AquaSKK's
 // Objective-C++ sources (https://github.com/codefirst/aquaskk):
@@ -19,7 +19,7 @@ import InputMethodKit
 enum Engine {
     static let supportDirectory: URL = {
         let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AquaSKK-Rust", isDirectory: true)
+            .appendingPathComponent("NablaSKK", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }()
@@ -41,7 +41,7 @@ enum Engine {
 
         if !FileManager.default.fileExists(atPath: config.path) {
             var template = """
-            # AquaSKK-Rust dictionaries: "type location" per line.
+            # NablaSKK dictionaries: "type location" per line.
             #   0 = SKK-JISYO (EUC-JP)   1 = auto-update "host url path"
             #   2 = skkserv host:port    4 = gadget (today/now/=expr)
             #   5 = SKK-JISYO (UTF-8)

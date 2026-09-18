@@ -180,7 +180,7 @@ mod tests {
         let mut file = DictionaryFile::new();
         file.load_from_str(SAMPLE);
 
-        let dir = std::env::temp_dir().join("aquaskk-core-test");
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("dict-file-roundtrip");
 
@@ -200,7 +200,7 @@ mod tests {
         let mut file = DictionaryFile::new();
         file.load_from_str(SAMPLE);
 
-        let dir = std::env::temp_dir().join("aquaskk-core-test");
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("dict-file-eucj");
 

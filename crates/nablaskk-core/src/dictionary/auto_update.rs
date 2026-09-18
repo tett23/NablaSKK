@@ -241,7 +241,7 @@ mod tests {
             stream.write_all(&body).unwrap();
         });
 
-        let dir = std::env::temp_dir().join("aquaskk-core-test");
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("auto-update.jisyo");
         std::fs::remove_file(&path).ok();

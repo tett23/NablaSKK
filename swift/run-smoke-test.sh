@@ -3,11 +3,11 @@
 set -e
 cd "$(dirname "$0")/.."
 
-cargo build --release -p aquaskk-ffi
+cargo build --release -p nablaskk-ffi
 
-swiftc -import-objc-header crates/aquaskk-ffi/include/aquaskk.h \
+swiftc -import-objc-header crates/nablaskk-ffi/include/nablaskk.h \
     swift/SKKSession.swift swift/smoke-test/main.swift \
-    target/release/libaquaskk_ffi.a \
+    target/release/libnablaskk_ffi.a \
     -o target/release/swift-smoke-test
 
 ./target/release/swift-smoke-test

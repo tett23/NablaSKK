@@ -1,7 +1,7 @@
 NOTICE
 ======
 
-aquaskk-rust is a Rust reimplementation (port) of the AquaSKK input
+NablaSKK is a Rust reimplementation (port) of the AquaSKK input
 method engine:
 
     AquaSKK — MacOS X implementation of the SKK input method
@@ -14,7 +14,7 @@ method engine:
 The engine architecture, state machine, editors, dictionary handling,
 keymap format, configuration files (kana-rule.conf, keymap.conf and the
 other files under data/), and the acceptance test data
-(crates/aquaskk-core/testdata/session_test.dat) are ports of, or taken
+(crates/nablaskk-core/testdata/session_test.dat) are ports of, or taken
 from, the upstream AquaSKK sources. This project is distributed under
 the same license (see LICENSE).
 
@@ -31,7 +31,7 @@ Portions derived from third-party work bundled with AquaSKK:
     Copyright (c) 2006 Tomotaka SUWA
     Portions copyright (c) 2000-2003 Shiro Kawai (from Gauche)
     BSD-style license. The EUC-JP codec tables in
-    crates/aquaskk-core/src/jconv/eucjp_tables.rs are generated from
+    crates/nablaskk-core/src/jconv/eucjp_tables.rs are generated from
     the EUC-JISX0213 (JIS X 0213:2000 Appendix 3) vs Unicode mapping
     table: Copyright (C) 2001 earthian@tama.or.jp, All Rights Reserved;
     Copyright (C) 2001 I'O, All Rights Reserved
@@ -40,7 +40,7 @@ Portions derived from third-party work bundled with AquaSKK:
   * GenericStateMachine — Generic State Machine Library for C++
     Copyright (c) 2006-2008 Tomotaka SUWA
     BSD-style license. Ported to Rust as
-    crates/aquaskk-core/src/machine.rs.
+    crates/nablaskk-core/src/machine.rs.
 
   * The SKK dictionary format and the SKK input method itself originate
     from SKK (Simple Kana to Kanji conversion program) by Masahiko Sato
@@ -50,8 +50,8 @@ BSD license text
 ----------------
 
 The BSD-style components listed above (jconv and GenericStateMachine,
-ported to crates/aquaskk-core/src/jconv/mod.rs and
-crates/aquaskk-core/src/machine.rs) are used under the following terms,
+ported to crates/nablaskk-core/src/jconv/mod.rs and
+crates/nablaskk-core/src/machine.rs) are used under the following terms,
 reproduced here to satisfy the license's redistribution conditions:
 
     Redistribution and use in source and binary forms, with or without

@@ -1,4 +1,4 @@
-# aquaskk-rust
+# NablaSKK
 
 [AquaSKK](https://github.com/codefirst/aquaskk) の入力エンジン(C++ 約22,000行)を
 Rust で再実装したものです。外部クレート依存はありません(zero dependencies)。
@@ -11,20 +11,20 @@ Rust で再実装したものです。外部クレート依存はありません
 - macOS 入力メソッド / Swift 連携を使う場合: macOS 12 以降と
   Xcode Command Line Tools(`xcode-select --install`)
 
-### macOS 入力メソッド (AquaSKK-Rust.app)
+### macOS 入力メソッド (NablaSKK.app)
 
 ```sh
-git clone https://github.com/tett23/aquaskk-rust
-cd aquaskk-rust
+git clone https://github.com/tett23/NablaSKK
+cd nablaskk
 sh macos/build-app.sh
-cp -r macos/dist/AquaSKK-Rust.app ~/Library/Input\ Methods/
+cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
 ```
 
 1. 一度ログアウトして再ログインします(既に旧版が動いている場合は
-   `pkill AquaSKKRust` でも可)
+   `pkill NablaSKK` でも可)
 2. 「システム設定 → キーボード → 入力ソース → 編集 → +」で
-   「日本語」から **AquaSKK-Rust** を追加します
-3. 辞書は `~/Library/Application Support/AquaSKK-Rust/dictionaries.conf`
+   「日本語」から **NablaSKK** を追加します
+3. 辞書は `~/Library/Application Support/NablaSKK/dictionaries.conf`
    で設定します(初回起動時に生成。既存 AquaSKK の SKK-JISYO.L が
    あれば自動で利用します)。例:
 
@@ -35,16 +35,16 @@ cp -r macos/dist/AquaSKK-Rust.app ~/Library/Input\ Methods/
 
    1行が「タイプ 場所」で、0=SKK-JISYO(EUC-JP)、1=自動ダウンロード
    ("host url path")、2=skkserv(host:port)、4=Gadget(today/now/=式)、
-   5=SKK-JISYO(UTF-8)。変更後は `pkill AquaSKKRust` で再読み込みされます。
+   5=SKK-JISYO(UTF-8)。変更後は `pkill NablaSKK` で再読み込みされます。
 
-ユーザー辞書は `~/Library/Application Support/AquaSKK-Rust/skk-jisyo`
+ユーザー辞書は `~/Library/Application Support/NablaSKK/skk-jisyo`
 (UTF-8)に保存されます。
 
 アンインストールは入力ソースから削除した上で:
 
 ```sh
-rm -rf ~/Library/Input\ Methods/AquaSKK-Rust.app
-rm -rf ~/Library/Application\ Support/AquaSKK-Rust   # 設定・ユーザー辞書ごと消す場合
+rm -rf ~/Library/Input\ Methods/NablaSKK.app
+rm -rf ~/Library/Application\ Support/NablaSKK   # 設定・ユーザー辞書ごと消す場合
 ```
 
 ### skkserv / skk-cli (コマンドラインツール)
@@ -59,16 +59,16 @@ cargo install --path crates/skk-cli   # ターミナル用デモ
 
 ### ライブラリとして使う
 
-Rust からは `aquaskk-core` をパス依存で、Swift / Objective-C からは
-`aquaskk-ffi`(staticlib / cdylib + `include/aquaskk.h`)を
+Rust からは `nablaskk-core` をパス依存で、Swift / Objective-C からは
+`nablaskk-ffi`(staticlib / cdylib + `include/nablaskk.h`)を
 リンクして使います。詳細は後述の各節を参照してください。
 
 ## 構成
 
 ```
 crates/
-  aquaskk-core/   エンジン本体(ライブラリ)
-  aquaskk-ffi/    C ABI(Swift / Objective-C ホスト向け)
+  nablaskk-core/   エンジン本体(ライブラリ)
+  nablaskk-ffi/    C ABI(Swift / Objective-C ホスト向け)
   skkserv/        SKK 辞書サーバー(バイナリ)
   skk-cli/        ターミナルで SKK 入力を試せるデモ
 data/             かな変換ルール・キーマップ(本家由来)
@@ -76,7 +76,7 @@ swift/            Swift ラッパーとスモークテスト
 upstream-patches/ 本家 C++ 側の修正パッチ
 ```
 
-### aquaskk-core
+### nablaskk-core
 
 本家 `src/engine` のポートです。モジュール対応:
 
@@ -122,17 +122,17 @@ cargo build --release
 cargo run --release -p skk-cli -- /usr/share/skk/SKK-JISYO.L
 ```
 
-### macOS 入力メソッド (AquaSKK-Rust.app)
+### macOS 入力メソッド (NablaSKK.app)
 
 InputMethodKit 製の実際に使える IME です(インストール手順は上記
 「[インストール](#インストール)」参照)。NSEvent をエンジンイベントへ
 変換して FFI 越しに Rust のセッションを駆動します。候補ウィンドウは
 マークテキスト内へのインライン描画で、a/s/d/f/j/k/l で選択できます。
 
-### aquaskk-ffi + Swift
+### nablaskk-ffi + Swift
 
 Swift / Objective-C から使うための C ABI です。ヘッダは
-`crates/aquaskk-ffi/include/aquaskk.h`、Swift ラッパーは
+`crates/nablaskk-ffi/include/nablaskk.h`、Swift ラッパーは
 `swift/SKKSession.swift`。
 
 ```sh

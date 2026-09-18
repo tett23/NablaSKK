@@ -1,20 +1,20 @@
-//! C ABI over [`aquaskk_core::session::Session`], for embedding the
+//! C ABI over [`nablaskk_core::session::Session`], for embedding the
 //! engine in Swift / Objective-C hosts (e.g. a macOS InputMethodKit
-//! input controller). See `include/aquaskk.h` for the C declarations.
+//! input controller). See `include/nablaskk.h` for the C declarations.
 //!
 //! All strings crossing the boundary are NUL-terminated UTF-8. Strings
 //! returned by `skk_*` functions are owned by the caller and must be
 //! released with `skk_string_free`.
 
-use aquaskk_core::backend::Backend;
-use aquaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, NullWidgets};
-use aquaskk_core::candidate::Candidate;
-use aquaskk_core::config::Config;
-use aquaskk_core::dictionary::{self, DictionaryKey, DictionaryType, Encoding, LocalUserDictionary};
-use aquaskk_core::input_mode::InputMode;
-use aquaskk_core::keymap::Keymap;
-use aquaskk_core::session::{Session, SessionParameter};
-use aquaskk_core::trie::RomanKanaConverter;
+use nablaskk_core::backend::Backend;
+use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, NullWidgets};
+use nablaskk_core::candidate::Candidate;
+use nablaskk_core::config::Config;
+use nablaskk_core::dictionary::{self, DictionaryKey, DictionaryType, Encoding, LocalUserDictionary};
+use nablaskk_core::input_mode::InputMode;
+use nablaskk_core::keymap::Keymap;
+use nablaskk_core::session::{Session, SessionParameter};
+use nablaskk_core::trie::RomanKanaConverter;
 
 use std::cell::RefCell;
 use std::ffi::{c_char, CStr, CString};

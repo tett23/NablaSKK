@@ -1,4 +1,4 @@
-//! aquaskk-core: Rust reimplementation of the AquaSKK input method engine.
+//! nablaskk-core: Rust reimplementation of the AquaSKK input method engine.
 //!
 //! Ported from <https://github.com/codefirst/aquaskk> (GPL-2.0-or-later).
 

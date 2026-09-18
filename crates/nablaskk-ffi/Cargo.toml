@@ -1,14 +1,14 @@
 [package]
-name = "aquaskk-ffi"
-description = "C ABI for aquaskk-core, for Swift/Objective-C hosts"
+name = "nablaskk-ffi"
+description = "C ABI for nablaskk-core, for Swift/Objective-C hosts"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [lib]
-name = "aquaskk_ffi"
+name = "nablaskk_ffi"
 crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
-aquaskk-core = { path = "../aquaskk-core" }
+nablaskk-core = { path = "../nablaskk-core" }

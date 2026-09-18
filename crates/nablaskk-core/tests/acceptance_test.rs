@@ -2,15 +2,15 @@
 //! `SKKInputSession_TEST` suite (testdata/session_test.dat) against
 //! the Rust session and compares every event's output.
 
-use aquaskk_core::backend::Backend;
-use aquaskk_core::bridge::{Clipboard, FrontEnd, NullWidgets};
-use aquaskk_core::config::Config;
-use aquaskk_core::dictionary::{Encoding, LocalUserDictionary};
-use aquaskk_core::event::modifier;
-use aquaskk_core::input_mode::InputMode;
-use aquaskk_core::keymap::Keymap;
-use aquaskk_core::session::{Session, SessionParameter};
-use aquaskk_core::trie::RomanKanaConverter;
+use nablaskk_core::backend::Backend;
+use nablaskk_core::bridge::{Clipboard, FrontEnd, NullWidgets};
+use nablaskk_core::config::Config;
+use nablaskk_core::dictionary::{Encoding, LocalUserDictionary};
+use nablaskk_core::event::modifier;
+use nablaskk_core::input_mode::InputMode;
+use nablaskk_core::keymap::Keymap;
+use nablaskk_core::session::{Session, SessionParameter};
+use nablaskk_core::trie::RomanKanaConverter;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -191,7 +191,7 @@ fn load_tests(text: &str) -> Vec<TestEntry> {
 
 #[test]
 fn original_session_acceptance_suite() {
-    let dir = std::env::temp_dir().join("aquaskk-acceptance-test");
+    let dir = std::env::temp_dir().join("nablaskk-acceptance-test");
     std::fs::create_dir_all(&dir).unwrap();
     let user_dict = dir.join("skk.jisyo");
     std::fs::remove_file(&user_dict).ok();
