@@ -1,3 +1,14 @@
+// Ported from AquaSKK (https://github.com/codefirst/aquaskk):
+//   src/engine/trie/SKKTrie.{h,cpp}
+//   src/engine/trie/SKKRomanKanaConverter.{h,cpp}
+// Copyright (C) 2007 Tomotaka SUWA <t.suwa@mac.com>
+// Ported to Rust by tett23, 2026.
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// any later version. See the LICENSE file for details.
+
 //! Romaji -> kana conversion rule tree
 //! (port of `SKKTrie` / `SKKRomanKanaConverter`).
 

@@ -1,6 +1,10 @@
-// Generated from AquaSKK's jconv_eucj2ucs-inl.h (EUC-JISX0213 vs Unicode mapping table,
-// Copyright (C) 2001 earthian@tama.or.jp / I'O; freely usable).
-// Do not edit by hand; see scratchpad gen_eucjp_tables.py in the port history.
+// Generated from AquaSKK's jconv_eucj2ucs-inl.h, which is automatically
+// generated from the EUC-JISX0213 (JIS X 0213:2000 Appendix 3) vs Unicode
+// mapping table:
+//   Copyright (C) 2001 earthian@tama.or.jp, All Rights Reserved.
+//   Copyright (C) 2001 I'O, All Rights Reserved.
+//   "You can use, modify, distribute this table freely."
+// Ported to Rust by tett23, 2026. Do not edit by hand.
 
 // Key: EUC-JP code (plane 2 entries carry a 0x8F0000 prefix byte).
 // Value: UCS scalar, or two packed UTF-16-range scalars (hi<<16|lo)

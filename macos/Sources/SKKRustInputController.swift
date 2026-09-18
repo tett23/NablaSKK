@@ -1,6 +1,14 @@
 // AquaSKK-Rust: InputMethodKit controller bridging to the Rust engine.
 //
-// License: GPL-2.0-or-later.
+// New Swift implementation, written with reference to AquaSKK's
+// Objective-C++ sources (https://github.com/codefirst/aquaskk):
+//   platform/mac/src/server/SKKPreProcessor.mm
+//     Copyright (C) 2007 Tomotaka SUWA <t.suwa@mac.com>
+//   platform/mac/src/server/SKKInputController.mm
+//     Copyright (C) 2007-2013 Tomotaka SUWA <tomotaka.suwa@gmail.com>
+// Written by tett23, 2026.
+//
+// License: GPL-2.0-or-later. See the LICENSE file for details.
 
 import Cocoa
 import InputMethodKit

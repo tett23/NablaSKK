@@ -1,3 +1,17 @@
+// Ported from AquaSKK (https://github.com/codefirst/aquaskk):
+//   src/engine/state/ (SKKState, SKKStatePrimary-inl,
+//   SKKStateComposing-inl, SKKStateRecursiveRegister-inl,
+//   SKKStateEntryRemove-inl)
+//   src/engine/session/ (SKKInputSession, SKKRecursiveEditor,
+//   SKKInputEnvironment, SKKInputModeSelector)
+// Copyright (C) 2008 Tomotaka SUWA <t.suwa@mac.com>
+// Ported to Rust by tett23, 2026.
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// any later version. See the LICENSE file for details.
+
 //! Input session: the SKK state machine and the nested-registration
 //! editor stack (port of the `state` and `session` directories).
 

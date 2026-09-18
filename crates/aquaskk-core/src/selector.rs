@@ -1,3 +1,14 @@
+// Ported from AquaSKK (https://github.com/codefirst/aquaskk):
+//   src/engine/selector/ (SKKSelector, SKKBaseSelector,
+//   SKKInlineSelector, SKKWindowSelector)
+// Copyright (C) 2008 Tomotaka SUWA <t.suwa@mac.com>
+// Ported to Rust by tett23, 2026.
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// any later version. See the LICENSE file for details.
+
 //! Candidate selection (port of the `selector` directory).
 
 use crate::backend::Backend;

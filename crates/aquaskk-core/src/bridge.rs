@@ -1,3 +1,14 @@
+// Ported from AquaSKK (https://github.com/codefirst/aquaskk):
+//   src/bridge/ (SKKFrontEnd, SKKCandidateWindow, SKKMessenger,
+//   SKKClipboard, SKKAnnotator, SKKDynamicCompletor)
+// Copyright (C) 2007-2010 Tomotaka SUWA <tomotaka.suwa@gmail.com>
+// Ported to Rust by tett23, 2026.
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// any later version. See the LICENSE file for details.
+
 //! Host-application interfaces (port of the `bridge` directory).
 //!
 //! The engine drives the UI through these traits; the null implementations

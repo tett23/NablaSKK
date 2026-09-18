@@ -1,3 +1,16 @@
+// Ported from AquaSKK (https://github.com/codefirst/aquaskk):
+//   src/engine/entry/SKKCandidate.{h,cpp}
+//   src/engine/entry/SKKCandidateParser.h
+//   src/engine/entry/SKKCandidateSuite.h
+//   src/engine/entry/SKKOkuriHint.h
+// Copyright (C) 2007-2008 Tomotaka SUWA <t.suwa@mac.com>
+// Ported to Rust by tett23, 2026.
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// any later version. See the LICENSE file for details.
+
 //! Conversion candidates (port of `SKKCandidate`, `SKKCandidateParser`,
 //! `SKKOkuriHint` and `SKKCandidateSuite`).
 

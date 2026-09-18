@@ -1,3 +1,14 @@
+// Ported from AquaSKK (https://github.com/codefirst/aquaskk):
+//   src/engine/skkserv/skkserv.{h,cpp}
+// Copyright (C) 2002-2004 phonohawk
+// Copyright (C) 2006-2008 Tomotaka SUWA <t.suwa@mac.com>
+// Ported to Rust by tett23, 2026.
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// any later version. See the LICENSE file for details.
+
 //! skkserv: SKK dictionary server speaking the skkserv protocol
 //! (port of AquaSKK's built-in skkserv, as a standalone binary).
 //!
