@@ -18,6 +18,13 @@ other files under data/), and the acceptance test data
 from, the upstream AquaSKK sources. This project is distributed under
 the same license (see LICENSE).
 
+The macOS input method under macos/ is a new Swift implementation, but
+it was written with reference to the upstream Objective-C++ sources
+(platform/mac): the NSEvent-to-engine-event translation follows
+SKKPreProcessor.mm, the controller structure follows
+SKKInputController.mm, and the bundle configuration follows the
+upstream Info.plist.
+
 Portions derived from third-party work bundled with AquaSKK:
 
   * jconv — Japanese character code conversion library
