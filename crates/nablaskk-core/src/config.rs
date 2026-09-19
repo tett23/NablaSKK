@@ -34,19 +34,24 @@ pub struct Config {
     pub delete_okuri_when_quit: bool,
 }
 
+// Defaults match the original AquaSKK's shipped UserDefaults.plist.
+// In particular suppress_newline_on_commit defaults to true: the Enter
+// that commits a conversion is consumed by the IME instead of reaching
+// the application (an Electron chat box would otherwise send the
+// message mid-composition).
 impl Default for Config {
     fn default() -> Self {
         Self {
             fix_intermediate_conversion: true,
             enable_dynamic_completion: false,
-            dynamic_completion_range: 5,
+            dynamic_completion_range: 1,
             enable_annotation: false,
             display_shortest_match_of_kana_conversions: false,
-            suppress_newline_on_commit: false,
-            max_count_of_inline_candidates: 3,
+            suppress_newline_on_commit: true,
+            max_count_of_inline_candidates: 4,
             handle_recursive_entry_as_okuri: false,
             inline_backspace_implies_commit: false,
-            delete_okuri_when_quit: false,
+            delete_okuri_when_quit: true,
         }
     }
 }

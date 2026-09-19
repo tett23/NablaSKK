@@ -348,25 +348,31 @@ fn window_selection() {
 }
 
 #[test]
-fn egg_like_newline_default() {
+fn committing_enter_is_consumed_by_default() {
     let mut h = Harness::new();
 
     h.type_str("Kanji ");
     let handled = h.press_enter();
-    // Default: newline is not suppressed -> event unhandled after commit
-    assert!(!handled);
+    // Upstream default: the committing Enter never reaches the app
+    // (otherwise e.g. a chat box would send the message mid-composition)
+    assert!(handled);
     assert_eq!(h.fixed(), "漢字");
+
+    // The next Enter, outside composition, passes through
+    let handled = h.press_enter();
+    assert!(!handled);
 }
 
 #[test]
-fn egg_like_newline_suppressed() {
+fn egg_like_newline_opt_in() {
     let mut h = Harness::with_config(Config {
-        suppress_newline_on_commit: true,
+        suppress_newline_on_commit: false,
         ..Config::default()
     });
 
     h.type_str("Kanji ");
     let handled = h.press_enter();
-    assert!(handled);
+    // egg-like-newline: commit and let the app insert the newline too
+    assert!(!handled);
     assert_eq!(h.fixed(), "漢字");
 }
