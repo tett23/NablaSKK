@@ -38,6 +38,17 @@ assertEqual(session.composing, "▼漢字", "conversion")
 session.handle(charcode: 0x0d)
 assertEqual(session.takeFixed(), "漢字", "commit")
 
+// 単語登録中のカーソル移動 (Ctrl-B で確定済み文字列上を左へ)
+for c in "Mikan ".utf8 { session.handle(charcode: c) }
+for c in "aiu".utf8 { session.handle(charcode: c) }
+assertEqual(session.composing, "[登録：みかん]あいう", "registration word")
+session.handle(charcode: UInt8(ascii: "b"), mods: .ctrl)
+precondition(session.composingCursor == -1, "cursor moved left")
+for c in "e".utf8 { session.handle(charcode: c) }
+assertEqual(session.composing, "[登録：みかん]あいえう", "insert at cursor")
+session.clear()
+_ = session.takeFixed()
+
 // モード切替
 session.handle(charcode: UInt8(ascii: "l"))
 precondition(session.inputMode == .ascii, "ascii mode")

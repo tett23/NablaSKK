@@ -83,6 +83,12 @@ public final class SKKSession {
         takeString(skk_session_composing(session))
     }
 
+    /// Cursor within `composing`, as a character offset from its end
+    /// (0 = end, -1 = before the last character).
+    public var composingCursor: Int {
+        Int(skk_session_composing_cursor(session))
+    }
+
     public var inputMode: InputMode {
         InputMode(rawValue: skk_session_input_mode(session)) ?? .hirakana
     }

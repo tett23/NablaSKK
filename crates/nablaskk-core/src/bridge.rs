@@ -111,6 +111,9 @@ pub trait DynamicCompletor {
 pub struct BufferedFrontEnd {
     pub fixed: String,
     pub composing: String,
+    /// Cursor within `composing`, as a character offset from the end
+    /// (0 = end, -1 = before the last character).
+    pub cursor: i32,
     pub selection: String,
 }
 
@@ -119,8 +122,9 @@ impl FrontEnd for BufferedFrontEnd {
         self.fixed += str_;
     }
 
-    fn compose_string(&mut self, str_: &str, _cursor: i32) {
+    fn compose_string(&mut self, str_: &str, cursor: i32) {
         self.composing = str_.to_string();
+        self.cursor = cursor;
     }
 
     fn selected_string(&self) -> String {

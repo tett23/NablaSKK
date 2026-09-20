@@ -184,6 +184,12 @@ public class SKKRustInputController: IMKInputController {
 
         var marked = Engine.session.composing
 
+        // Caret position inside the marked text, in UTF-16 units. The engine
+        // reports a character offset from the end of the composing string.
+        let characters = Array(marked)
+        let caretIndex = max(0, min(characters.count, characters.count + Engine.session.composingCursor))
+        let caret = String(characters[..<caretIndex]).utf16.count
+
         // Candidate window contents are rendered into the marked text
         // (labels select directly, matching the engine's key handling)
         if Engine.session.candidatesVisible {
@@ -201,14 +207,14 @@ public class SKKRustInputController: IMKInputController {
             marked += line
         }
 
-        setMarkedText(marked, to: client)
+        setMarkedText(marked, caret: caret, to: client)
     }
 
     private func insert(_ text: String, to client: IMKTextInput) {
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
     }
 
-    private func setMarkedText(_ text: String, to client: IMKTextInput) {
+    private func setMarkedText(_ text: String, caret: Int? = nil, to client: IMKTextInput) {
         let attributes: [NSAttributedString.Key: Any] = [
             .underlineStyle: NSUnderlineStyle.single.rawValue,
         ]
@@ -216,7 +222,7 @@ public class SKKRustInputController: IMKInputController {
 
         client.setMarkedText(
             attributed,
-            selectionRange: NSRange(location: text.count, length: 0),
+            selectionRange: NSRange(location: caret ?? text.utf16.count, length: 0),
             replacementRange: NSRange(location: NSNotFound, length: NSNotFound)
         )
     }

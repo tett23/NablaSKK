@@ -180,6 +180,19 @@ pub unsafe extern "C" fn skk_session_composing(session: *const SkkSession) -> *m
     into_cstring(session.session.composing_string().to_string())
 }
 
+/// Cursor within the composing text, as a character offset from its end
+/// (0 = end, -1 = before the last character). Non-zero while editing a
+/// reading or a registration word with the cursor keys.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_composing_cursor(session: *const SkkSession) -> i32 {
+    let Some(session) = session.as_ref() else { return 0 };
+
+    session.frontend.borrow().cursor
+}
+
 /// The current input mode: 0=hirakana 1=katakana 2=jisx0201kana
 /// 3=ascii 4=jisx0208latin.
 ///

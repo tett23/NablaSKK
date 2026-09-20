@@ -62,6 +62,10 @@ char *skk_session_take_fixed(SkkSession *session);
 /* Current marked (composing) text (caller frees). */
 char *skk_session_composing(const SkkSession *session);
 
+/* Cursor within the composing text: character offset from its end
+ * (0 = end, -1 = before the last character). */
+int32_t skk_session_composing_cursor(const SkkSession *session);
+
 int32_t skk_session_input_mode(const SkkSession *session);
 
 void skk_session_commit(SkkSession *session);

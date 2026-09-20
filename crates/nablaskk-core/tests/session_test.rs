@@ -376,3 +376,22 @@ fn egg_like_newline_opt_in() {
     assert!(!handled);
     assert_eq!(h.fixed(), "漢字");
 }
+
+#[test]
+fn registration_word_cursor_movement() {
+    let mut h = Harness::new();
+
+    h.type_str("Mikan ");
+    h.type_str("aiu");
+    assert_eq!(h.composing(), "[登録：みかん]あいう");
+
+    // Move left over the fixed word and insert in the middle
+    h.press_ctrl(b'b');
+    h.type_str("e");
+    assert_eq!(h.composing(), "[登録：みかん]あいえう");
+
+    // Backspace deletes before the cursor
+    h.press_ctrl(b'h');
+    assert_eq!(h.composing(), "[登録：みかん]あいう");
+    assert_eq!(h.frontend.borrow().cursor, -1);
+}
