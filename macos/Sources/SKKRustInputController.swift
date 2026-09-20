@@ -81,6 +81,39 @@ enum Engine {
     }
 }
 
+/// Detects Chromium-based clients (Electron apps, Chrome, Edge, ...) by the
+/// framework they bundle, since every Electron app has its own bundle id.
+enum ChromiumClients {
+    private static var cache: [String: Bool] = [:]
+
+    private static let frameworks = [
+        "Electron Framework.framework",
+        "Chromium Embedded Framework.framework",
+        "Google Chrome Framework.framework",
+        "Chromium Framework.framework",
+        "Microsoft Edge Framework.framework",
+        "Brave Browser Framework.framework",
+        "Vivaldi Framework.framework",
+        "Arc Framework.framework",
+    ]
+
+    static func contains(_ bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        if let known = cache[bundleIdentifier] { return known }
+
+        var result = false
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
+            let directory = url.appendingPathComponent("Contents/Frameworks")
+            result = frameworks.contains {
+                FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
+            }
+        }
+
+        cache[bundleIdentifier] = result
+        return result
+    }
+}
+
 @objc(SKKRustInputController)
 public class SKKRustInputController: IMKInputController {
     private static weak var activeController: SKKRustInputController?
@@ -140,11 +173,38 @@ public class SKKRustInputController: IMKInputController {
                 text.components(separatedBy: .newlines).joined())
         }
 
+        let wasComposing = !Engine.session.composing.isEmpty
         let handled = Engine.session.handle(charcode: charcode, keycode: keycode, mods: mods)
 
-        sync(to: client)
+        let produced = sync(to: client)
+
+        // A key we consumed without touching any text (Ctrl-J switching from
+        // ASCII to hiragana, say) still reaches the page in Chromium clients.
+        if handled && !produced && !wasComposing && mods.contains(.ctrl)
+            && ChromiumClients.contains(client.bundleIdentifier()) {
+            maskKeyEvent(for: client)
+        }
 
         return handled
+    }
+
+    /// Chromium only reports a keydown as "processed by the IME" (keyCode
+    /// 229, which web pages such as xterm.js ignore) when marked text exists
+    /// before or after the key handler, or text longer than one unit was
+    /// inserted; otherwise it forwards the real key, so a terminal turns our
+    /// Ctrl-J into a newline. AquaSKK's trick of marking 0x0c and clearing it
+    /// inside the handler leaves no marked text at the end and does not help
+    /// here. Instead hold a zero-width space as marked text until the handler
+    /// has returned, then cancel the composition.
+    private func maskKeyEvent(for client: IMKTextInput) {
+        let none = NSRange(location: NSNotFound, length: NSNotFound)
+        client.setMarkedText("\u{200B}", selectionRange: NSRange(location: 0, length: 0), replacementRange: none)
+
+        DispatchQueue.main.async {
+            // A key typed in between already replaced the marked text
+            guard Engine.session.composing.isEmpty else { return }
+            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0), replacementRange: none)
+        }
     }
 
     // ------------------------------------------------------------
@@ -187,7 +247,10 @@ public class SKKRustInputController: IMKInputController {
     // Engine state -> client
     // ------------------------------------------------------------
 
-    private func sync(to client: IMKTextInput) {
+    /// Push engine output to the client. Returns true when it committed
+    /// text or left marked text behind.
+    @discardableResult
+    private func sync(to client: IMKTextInput) -> Bool {
         let fixed = Engine.session.takeFixed()
         if !fixed.isEmpty {
             insert(fixed, to: client)
@@ -219,6 +282,8 @@ public class SKKRustInputController: IMKInputController {
         }
 
         setMarkedText(marked, caret: caret, to: client)
+
+        return !fixed.isEmpty || !marked.isEmpty
     }
 
     private func insert(_ text: String, to client: IMKTextInput) {
