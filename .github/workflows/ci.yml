@@ -25,6 +25,9 @@ jobs:
       - name: Swift FFI smoke test
         if: runner.os == 'macOS'
         run: sh swift/run-smoke-test.sh
+      - name: macOS key translation tests
+        if: runner.os == 'macOS'
+        run: sh macos/run-tests.sh
 
   # ==================================================================
   # Build artifacts

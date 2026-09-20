@@ -81,6 +81,28 @@ enum Engine {
     }
 }
 
+/// Opt-in diagnostics: create the file
+/// `~/Library/Application Support/NablaSKK/debug-enabled` and key handling
+/// metadata is appended to `debug.log` next to it. Plain printable keys are
+/// never recorded.
+enum DebugLog {
+    private static let flag = Engine.supportDirectory.appendingPathComponent("debug-enabled")
+    private static let file = Engine.supportDirectory.appendingPathComponent("debug.log")
+
+    static func write(_ message: () -> String) {
+        guard FileManager.default.fileExists(atPath: flag.path) else { return }
+
+        let line = "\(Date()) \(message())\n"
+        if let handle = try? FileHandle(forWritingTo: file) {
+            handle.seekToEndOfFile()
+            handle.write(Data(line.utf8))
+            try? handle.close()
+        } else {
+            try? Data(line.utf8).write(to: file)
+        }
+    }
+}
+
 /// Detects Chromium-based clients (Electron apps, Chrome, Edge, ...) by the
 /// framework they bundle, since every Electron app has its own bundle id.
 enum ChromiumClients {
@@ -156,7 +178,8 @@ public class SKKRustInputController: IMKInputController {
             return false
         }
 
-        let (charcode, keycode, mods) = translate(event)
+        let key = KeyTranslator.translate(event)
+        let (charcode, keycode, mods) = (key.charcode, key.keycode, key.mods)
 
         // Command shortcuts belong to the application, except Cmd-V while
         // composing: it pastes into the reading / registration word.
@@ -177,6 +200,20 @@ public class SKKRustInputController: IMKInputController {
         let handled = Engine.session.handle(charcode: charcode, keycode: keycode, mods: mods)
 
         let produced = sync(to: client)
+
+        DebugLog.write {
+            // Metadata only: plain printable keys are not recorded
+            let printable = mods.isEmpty && (0x20...0x7e).contains(charcode)
+            let chars = printable ? "printable" : String(format: "0x%02x", charcode)
+            let raw = (event.characters ?? "").unicodeScalars.map { String(format: "%02x", $0.value) }.joined(separator: ",")
+            let rawIgnoring = (event.charactersIgnoringModifiers ?? "").unicodeScalars
+                .map { String(format: "%02x", $0.value) }.joined(separator: ",")
+            return "client=\(client.bundleIdentifier() ?? "?") key=\(chars) keycode=\(keycode) "
+                + "mods=\(mods.rawValue) flags=\(String(event.modifierFlags.rawValue, radix: 16)) "
+                + (printable ? "" : "characters=[\(raw)] ignoringModifiers=[\(rawIgnoring)] ")
+                + "handled=\(handled) produced=\(produced) wasComposing=\(wasComposing) "
+                + "mode=\(Engine.session.inputMode)"
+        }
 
         // A key we consumed without touching any text (Ctrl-J switching from
         // ASCII to hiragana, say) still reaches the page in Chromium clients.
@@ -205,42 +242,6 @@ public class SKKRustInputController: IMKInputController {
             guard Engine.session.composing.isEmpty else { return }
             client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0), replacementRange: none)
         }
-    }
-
-    // ------------------------------------------------------------
-    // NSEvent -> engine event (port of SKKPreProcessor)
-    // ------------------------------------------------------------
-
-    private func translate(_ event: NSEvent) -> (UInt8, UInt8, SKKSession.Modifiers) {
-        let keycode = UInt8(truncatingIfNeeded: event.keyCode)
-
-        var charcode: UInt8 = 0
-        if let scalar = event.charactersIgnoringModifiers?.unicodeScalars.first, scalar.value < 0x80 {
-            charcode = UInt8(scalar.value)
-        }
-
-        var mods: SKKSession.Modifiers = []
-
-        if event.modifierFlags.contains(.shift) {
-            // Use the shifted character for printable keys (SKKPreProcessor)
-            if let scalar = event.characters?.unicodeScalars.first,
-               scalar.value > 0x20, scalar.value < 0x7f {
-                charcode = UInt8(scalar.value)
-            }
-            mods.insert(.shift)
-        }
-        if event.modifierFlags.contains(.control) { mods.insert(.ctrl) }
-        if event.modifierFlags.contains(.option) { mods.insert(.alt) }
-        if event.modifierFlags.contains(.command) { mods.insert(.meta) }
-
-        // The delete (⌫) key erases backwards; forward delete (⌦) forwards.
-        switch keycode {
-        case 51: charcode = 0x08
-        case 117: charcode = 0x7f
-        default: break
-        }
-
-        return (charcode, keycode, mods)
     }
 
     // ------------------------------------------------------------

@@ -79,6 +79,19 @@ Developer ID 証明書がある場合は、リポジトリシークレット
 macos/build-app.sh` で署名し、`xcrun notarytool submit --wait` →
 `xcrun stapler staple` で公証します。
 
+### 不具合調査用のログ
+
+特定のアプリでキーが効かない等の調査用に、オプトインの診断ログがあります:
+
+```sh
+touch ~/Library/Application\ Support/NablaSKK/debug-enabled   # 有効化
+tail -f ~/Library/Application\ Support/NablaSKK/debug.log
+rm ~/Library/Application\ Support/NablaSKK/debug-enabled      # 無効化
+```
+
+記録するのはクライアントの bundle id・キーコード・修飾キー・処理結果のみで、
+修飾なしの通常の文字キーは内容を記録しません。
+
 ### skkserv / skk-cli (コマンドラインツール)
 
 ```sh
