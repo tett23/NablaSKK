@@ -7,7 +7,7 @@
 //! released with `skk_string_free`.
 
 use nablaskk_core::backend::Backend;
-use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, NullWidgets};
+use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, Clipboard, NullWidgets};
 use nablaskk_core::candidate::Candidate;
 use nablaskk_core::config::Config;
 use nablaskk_core::dictionary::{self, DictionaryKey, DictionaryType, Encoding, LocalUserDictionary};
@@ -52,11 +52,22 @@ impl CandidateWindow for SharedWindow {
     }
 }
 
+/// Clipboard contents supplied by the host (the engine cannot reach the
+/// system pasteboard itself).
+struct SharedClipboard(Rc<RefCell<String>>);
+
+impl Clipboard for SharedClipboard {
+    fn paste_string(&mut self) -> String {
+        self.0.borrow().clone()
+    }
+}
+
 pub struct SkkSession {
     session: Session,
     keymap: Keymap,
     frontend: Rc<RefCell<BufferedFrontEnd>>,
     window: Rc<RefCell<WindowState>>,
+    clipboard: Rc<RefCell<String>>,
 }
 
 fn cstr<'a>(ptr: *const c_char) -> Option<&'a str> {
@@ -90,6 +101,7 @@ pub extern "C" fn skk_session_new(user_dictionary_path: *const c_char) -> *mut S
 
     let frontend = Rc::new(RefCell::new(BufferedFrontEnd::default()));
     let window = Rc::new(RefCell::new(WindowState::default()));
+    let clipboard = Rc::new(RefCell::new(String::new()));
 
     let session = Session::new(SessionParameter {
         backend,
@@ -98,12 +110,12 @@ pub extern "C" fn skk_session_new(user_dictionary_path: *const c_char) -> *mut S
         frontend: Box::new(frontend.clone()),
         window: Box::new(SharedWindow(window.clone())),
         messenger: Box::new(NullWidgets),
-        clipboard: Box::new(NullWidgets),
+        clipboard: Box::new(SharedClipboard(clipboard.clone())),
         annotator: Box::new(NullWidgets),
         completor: Box::new(NullWidgets),
     });
 
-    Box::into_raw(Box::new(SkkSession { session, keymap, frontend, window }))
+    Box::into_raw(Box::new(SkkSession { session, keymap, frontend, window, clipboard }))
 }
 
 /// # Safety
@@ -154,6 +166,18 @@ pub unsafe extern "C" fn skk_session_handle(
 
     let event = session.keymap.fetch(charcode, keycode, mods);
     session.session.handle_event(&event) as i32
+}
+
+/// Set the text a paste event (Ctrl-Y / Cmd-V) will insert. Call this
+/// with the system pasteboard contents before feeding the paste key.
+///
+/// # Safety
+/// `session` must be a valid session pointer; `text` a valid C string.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_set_clipboard(session: *mut SkkSession, text: *const c_char) {
+    let Some(session) = session.as_mut() else { return };
+
+    *session.clipboard.borrow_mut() = cstr(text).unwrap_or("").to_string();
 }
 
 /// Text committed since the last call (transfers ownership; free with

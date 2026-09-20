@@ -73,6 +73,11 @@ public final class SKKSession {
         skk_session_handle(session, charcode, keycode, mods.rawValue) == 1
     }
 
+    /// Set the text a paste event (Ctrl-Y / Cmd-V) will insert.
+    public func setClipboard(_ text: String) {
+        text.withCString { skk_session_set_clipboard(session, $0) }
+    }
+
     /// Text committed since the last call.
     public func takeFixed() -> String {
         takeString(skk_session_take_fixed(session))

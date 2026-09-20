@@ -123,12 +123,23 @@ public class SKKRustInputController: IMKInputController {
             return false
         }
 
-        // Command shortcuts always belong to the application
-        if event.modifierFlags.contains(.command) {
+        let (charcode, keycode, mods) = translate(event)
+
+        // Command shortcuts belong to the application, except Cmd-V while
+        // composing: it pastes into the reading / registration word.
+        let isPaste = (mods == [.meta] && charcode == UInt8(ascii: "v"))
+            || (mods == [.ctrl] && charcode == UInt8(ascii: "y"))
+        if mods.contains(.meta) && !(isPaste && !Engine.session.composing.isEmpty) {
             return false
         }
 
-        let (charcode, keycode, mods) = translate(event)
+        if isPaste {
+            // Single line only: a newline inside a dictionary word is invalid
+            let text = NSPasteboard.general.string(forType: .string) ?? ""
+            Engine.session.setClipboard(
+                text.components(separatedBy: .newlines).joined())
+        }
+
         let handled = Engine.session.handle(charcode: charcode, keycode: keycode, mods: mods)
 
         sync(to: client)

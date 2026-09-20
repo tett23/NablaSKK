@@ -49,6 +49,19 @@ assertEqual(session.composing, "[登録：みかん]あいえう", "insert at cu
 session.clear()
 _ = session.takeFixed()
 
+// 単語登録中のペースト (Cmd-V)
+for c in "Mikan ".utf8 { session.handle(charcode: c) }
+session.setClipboard("蜜柑")
+let pasteHandled = session.handle(charcode: UInt8(ascii: "v"), mods: .meta)
+precondition(pasteHandled, "paste consumed while registering")
+assertEqual(session.composing, "[登録：みかん]蜜柑", "paste into registration")
+session.handle(charcode: 0x0d)
+assertEqual(session.takeFixed(), "蜜柑", "registered pasted word")
+for c in "Mikan ".utf8 { session.handle(charcode: c) }
+assertEqual(session.composing, "▼蜜柑", "pasted word was learned")
+session.clear()
+_ = session.takeFixed()
+
 // モード切替
 session.handle(charcode: UInt8(ascii: "l"))
 precondition(session.inputMode == .ascii, "ascii mode")

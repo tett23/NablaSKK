@@ -56,6 +56,10 @@ int32_t skk_session_add_dictionary(SkkSession *session, int32_t dictionary_type,
 int32_t skk_session_handle(SkkSession *session, uint8_t charcode,
                            uint8_t keycode, uint32_t mods);
 
+/* Set the text a paste event (Ctrl-Y / Cmd-V) will insert; call with the
+ * system pasteboard contents before feeding the paste key. */
+void skk_session_set_clipboard(SkkSession *session, const char *text);
+
 /* Text committed since the last call (caller frees). */
 char *skk_session_take_fixed(SkkSession *session);
 
