@@ -17,6 +17,7 @@ APP=macos/dist/NablaSKK.app
 CONTENTS="$APP/Contents"
 SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Sources/KeyTranslator.swift \
+    macos/Sources/ClientQuirks.swift \
     macos/Sources/SKKRustInputController.swift \
     macos/Sources/main.swift"
 MACOS_TARGET=12

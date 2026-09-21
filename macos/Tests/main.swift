@@ -69,6 +69,36 @@ for (label, event) in [
     check(handled && session.inputMode == .hirakana, "\(label): ctrl-j consumed, mode is hiragana")
 }
 
+// Client quirks: which consumed keys need masking
+check(ClientQuirks.keyLeak(for: "com.mitchellh.ghostty") == .allKeys, "ghostty re-encodes every key")
+check(ClientQuirks.keyLeak(for: "com.apple.TextEdit") == .none, "TextEdit honors the IME result")
+check(ClientQuirks.keyLeak(for: nil) == .none, "unknown client")
+
+// Ghostty: `l` (hiragana -> ASCII) produces nothing and must be masked
+check(ClientQuirks.shouldMask(.allKeys, handled: true, produced: false, wasComposing: false, hasControl: false),
+      "ghostty: silent plain key is masked")
+check(!ClientQuirks.shouldMask(.allKeys, handled: true, produced: true, wasComposing: false, hasControl: false),
+      "ghostty: keys that produce text are not masked")
+check(!ClientQuirks.shouldMask(.allKeys, handled: true, produced: false, wasComposing: true, hasControl: false),
+      "ghostty: marked text before the key already hides it")
+check(!ClientQuirks.shouldMask(.allKeys, handled: false, produced: false, wasComposing: false, hasControl: false),
+      "ghostty: pass-through keys are not masked")
+// Chromium: only Control combinations leak
+check(ClientQuirks.shouldMask(.controlKeys, handled: true, produced: false, wasComposing: false, hasControl: true),
+      "chromium: silent ctrl key is masked")
+check(!ClientQuirks.shouldMask(.controlKeys, handled: true, produced: false, wasComposing: false, hasControl: false),
+      "chromium: silent plain key is left alone")
+check(!ClientQuirks.shouldMask(.none, handled: true, produced: false, wasComposing: false, hasControl: true),
+      "native clients are never masked")
+
+// The engine side of the Ghostty case: `l` is consumed and produces nothing
+do {
+    let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-key-test")
+    let handled = session.handle(charcode: UInt8(ascii: "l"), keycode: 37)
+    check(handled && session.inputMode == .ascii && session.composing.isEmpty && session.takeFixed().isEmpty,
+          "l: consumed, ascii mode, no text and no marked text")
+}
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)
