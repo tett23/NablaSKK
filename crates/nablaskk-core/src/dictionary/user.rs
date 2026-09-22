@@ -16,7 +16,7 @@ use super::{CompletionHelper, Dictionary};
 use crate::candidate::{Candidate, CandidateSuite, OkuriHint};
 use crate::entry::Entry;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 const MAX_IDLE_COUNT: u32 = 20;
 const MAX_SAVE_INTERVAL: Duration = Duration::from_secs(60 * 5);
@@ -32,6 +32,13 @@ pub struct LocalUserDictionary {
     file: DictionaryFile,
     private_mode: bool,
     dirty: bool,
+    /// Modification time of the file as of our last load or save, to
+    /// notice edits made by other programs.
+    file_modified: Option<SystemTime>,
+}
+
+fn modified_time(path: &Path) -> Option<SystemTime> {
+    std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
 fn find_entry(container: &[DictionaryEntry], query: &str) -> Option<usize> {
@@ -71,9 +78,39 @@ impl LocalUserDictionary {
             file,
             private_mode: false,
             dirty: false,
+            file_modified: modified_time(path.as_ref()),
         };
         dictionary.fix();
         dictionary
+    }
+
+    /// Pick up edits made to the file by another program (an editor UI).
+    /// Returns true when the dictionary was re-read. Unsaved learning
+    /// takes precedence: a dirty dictionary is saved instead, overwriting
+    /// the external change.
+    pub fn reload_if_changed(&mut self) -> bool {
+        if self.private_mode || modified_time(&self.path) == self.file_modified {
+            return false;
+        }
+
+        if self.dirty {
+            self.save(true);
+            return false;
+        }
+
+        let mut file = DictionaryFile::new();
+        match file.load(&self.path, self.encoding) {
+            Ok(()) => {
+                self.file = file;
+                self.fix();
+                self.file_modified = modified_time(&self.path);
+                true
+            }
+            Err(err) => {
+                eprintln!("LocalUserDictionary: reload failed: {err}");
+                false
+            }
+        }
     }
 
     /// Register a selected candidate, moving it to the front.
@@ -158,6 +195,7 @@ impl LocalUserDictionary {
             eprintln!("LocalUserDictionary: rename() failed: {err}");
         } else {
             self.dirty = false;
+            self.file_modified = modified_time(&self.path);
         }
     }
 
@@ -346,6 +384,47 @@ mod tests {
         assert!(std::str::from_utf8(&bytes).is_err());
 
         let dict = LocalUserDictionary::open(&path, Encoding::Auto);
+        let mut suite = CandidateSuite::new();
+        dict.find(&Entry::from_entry("いみ"), &mut suite);
+        assert_eq!(suite.candidates()[0].word(), "意味");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn reload_if_changed_picks_up_external_edits() {
+        let dir = std::env::temp_dir().join("nablaskk-core-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("user-reload");
+        std::fs::remove_file(&path).ok();
+
+        let mut dict = LocalUserDictionary::open(&path, Encoding::Utf8);
+        dict.register(&Entry::from_entry("かんじ"), &Candidate::new("漢字"));
+        dict.save(true);
+        assert!(!dict.reload_if_changed(), "unchanged file is not reloaded");
+
+        // Another program rewrites the file (with a newer mtime)
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let mut file = DictionaryFile::new();
+        file.load_from_str(";; okuri-ari entries.\n;; okuri-nasi entries.\nかんじ /幹事/\n");
+        file.save(&path, Encoding::Utf8).unwrap();
+        // Ensure the mtime differs even on coarse filesystems
+        let later = std::time::SystemTime::now() + std::time::Duration::from_secs(2);
+        std::fs::File::options().write(true).open(&path).unwrap().set_modified(later).unwrap();
+
+        assert!(dict.reload_if_changed());
+        let mut suite = CandidateSuite::new();
+        dict.find(&Entry::from_entry("かんじ"), &mut suite);
+        assert_eq!(suite.candidates()[0].word(), "幹事");
+
+        // Unsaved learning wins over an external edit
+        dict.register(&Entry::from_entry("いみ"), &Candidate::new("意味"));
+        let mut file = DictionaryFile::new();
+        file.load_from_str(";; okuri-ari entries.\n;; okuri-nasi entries.\n");
+        file.save(&path, Encoding::Utf8).unwrap();
+        std::fs::File::options().write(true).open(&path).unwrap()
+            .set_modified(later + std::time::Duration::from_secs(2)).unwrap();
+        assert!(!dict.reload_if_changed());
         let mut suite = CandidateSuite::new();
         dict.find(&Entry::from_entry("いみ"), &mut suite);
         assert_eq!(suite.candidates()[0].word(), "意味");

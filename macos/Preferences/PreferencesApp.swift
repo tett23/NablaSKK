@@ -6,16 +6,115 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-@main
-struct PreferencesApp: App {
-    var body: some Scene {
-        WindowGroup("NablaSKK 辞書の設定") {
+struct RootView: View {
+    var body: some View {
+        TabView {
             DictionaryListView()
-                .frame(minWidth: 640, minHeight: 360)
+                .tabItem { Label("辞書", systemImage: "books.vertical") }
+            UserDictionaryView()
+                .tabItem { Label("ユーザー辞書", systemImage: "person.text.rectangle") }
         }
-        .commands {
-            CommandGroup(replacing: .newItem) {}
+        .padding(.top, 4)
+        .frame(minWidth: 720, minHeight: 440)
+    }
+}
+
+/// AppKit lifecycle around a single preferences window. The SwiftUI `App`
+/// lifecycle dropped the window once it went behind other apps: clicking
+/// the Dock icon (or the input method asking to open the app again)
+/// activated the process without showing anything. Owning the window
+/// here keeps it alive, and every activation path orders it front.
+@main
+final class PreferencesAppDelegate: NSObject, NSApplicationDelegate {
+    private var window: NSWindow?
+
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = PreferencesAppDelegate()
+        app.delegate = delegate
+        app.run()
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.mainMenu = Self.makeMainMenu()
+        showWindow()
+    }
+
+    /// Dock icon click, or `open` of a running app
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        showWindow()
+        return false
+    }
+
+    /// Activation from the input method's "辞書を管理..." item
+    func applicationDidBecomeActive(_ notification: Notification) {
+        showWindow()
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+
+    private func showWindow() {
+        if window == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 760, height: 480),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "NablaSKK の設定"
+            window.contentView = NSHostingView(rootView: RootView())
+            window.isReleasedWhenClosed = false
+            window.setFrameAutosaveName("NablaSKKPreferences")
+            window.center()
+            self.window = window
         }
+
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        if ProcessInfo.processInfo.environment["NABLASKK_PREFS_DEBUG"] != nil, let window {
+            NSLog("showWindow: visible=%d key=%d frontmostApp=%d",
+                  window.isVisible ? 1 : 0, window.isKeyWindow ? 1 : 0, NSApp.isActive ? 1 : 0)
+        }
+    }
+
+    /// The standard menus a swiftc-built app does not get for free; the
+    /// Edit menu is what makes Cmd-C/V/X and Cmd-Z work in text fields.
+    private static func makeMainMenu() -> NSMenu {
+        let mainMenu = NSMenu()
+
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "NablaSKK の設定を隠す", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "NablaSKK の設定を終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let appItem = NSMenuItem()
+        appItem.submenu = appMenu
+        mainMenu.addItem(appItem)
+
+        let editMenu = NSMenu(title: "編集")
+        editMenu.addItem(withTitle: "取り消す", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "やり直す", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "カット", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "コピー", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "ペースト", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "すべてを選択", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        let editItem = NSMenuItem()
+        editItem.submenu = editMenu
+        mainMenu.addItem(editItem)
+
+        let windowMenu = NSMenu(title: "ウインドウ")
+        windowMenu.addItem(withTitle: "しまう", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "閉じる", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let windowItem = NSMenuItem()
+        windowItem.submenu = windowMenu
+        mainMenu.addItem(windowItem)
+        NSApp.windowsMenu = windowMenu
+
+        return mainMenu
     }
 }
 

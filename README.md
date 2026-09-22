@@ -55,7 +55,10 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    無効化した辞書です。
 
 ユーザー辞書は `~/Library/Application Support/NablaSKK/skk-jisyo`
-(UTF-8)に保存されます。
+(UTF-8)に保存されます。設定アプリの「ユーザー辞書」タブで、見出し語の
+検索・追加・削除、候補の追加・並べ替え・注釈の編集ができます。編集は
+自動保存され、次にどこかのアプリで入力を始めたときに IME が再読み込み
+します(IME 側に未保存の学習がある場合はそちらが優先されます)。
 
 アンインストールは入力ソースから削除した上で:
 

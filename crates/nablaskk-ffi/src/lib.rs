@@ -270,6 +270,18 @@ pub unsafe extern "C" fn skk_session_clear(session: *mut SkkSession) {
     }
 }
 
+/// Re-read the user dictionary if another program changed the file
+/// (unsaved learning is saved instead and wins). Returns 1 when reloaded.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_reload_user_dictionary(session: *mut SkkSession) -> i32 {
+    let Some(session) = session.as_mut() else { return 0 };
+
+    session.session.backend_mut().user_dictionary_mut().reload_if_changed() as i32
+}
+
 /// Flush the user dictionary to disk.
 ///
 /// # Safety

@@ -78,6 +78,8 @@ int32_t skk_session_input_mode(const SkkSession *session);
 void skk_session_commit(SkkSession *session);
 void skk_session_clear(SkkSession *session);
 void skk_session_save(SkkSession *session);
+/* Re-read the user dictionary if another program changed the file. */
+int32_t skk_session_reload_user_dictionary(SkkSession *session);
 
 /* Candidate window state (valid until the next handled event). */
 int32_t skk_session_candidates_visible(const SkkSession *session);

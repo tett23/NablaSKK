@@ -87,6 +87,7 @@ public class SKKRustInputController: IMKInputController {
 
     public override func activateServer(_ sender: Any!) {
         Engine.reloadDictionariesIfChanged()
+        Engine.session.reloadUserDictionaryIfChanged()
 
         if Self.activeController !== self {
             // Another client had pending composition; drop it

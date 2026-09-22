@@ -151,6 +151,12 @@ public final class SKKSession {
         skk_session_clear(session)
     }
 
+    /// Re-read the user dictionary if another program changed the file.
+    @discardableResult
+    public func reloadUserDictionaryIfChanged() -> Bool {
+        skk_session_reload_user_dictionary(session) == 1
+    }
+
     /// Flush the user dictionary to disk.
     public func save() {
         skk_session_save(session)

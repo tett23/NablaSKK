@@ -153,6 +153,49 @@ do {
     try? FileManager.default.removeItem(at: scratch)
 }
 
+// User dictionary model: sections, annotations, okuri hints, escaping, round trip
+do {
+    let text = """
+    ;; okuri-ari entries.
+    おくr /送/贈/[り/送/]/
+    ;; okuri-nasi entries.
+    かんじ /漢字;kanji/幹事/
+    すらっしゅ /a[2f]b/
+    """
+    let dictionary = UserDictionary.parse(text)
+    check(dictionary.okuriAri.count == 1 && dictionary.okuriNasi.count == 2, "user dict: sections")
+
+    let okuri = dictionary.okuriAri[0]
+    check(okuri.reading == "おくr" && okuri.okuriAri && okuri.candidates.map(\.word) == ["送", "贈"],
+          "user dict: okuri-ari candidates")
+    check(okuri.hints == [UserOkuriHint(okuri: "り", words: ["送"])], "user dict: okuri hint parsed")
+
+    let kanji = dictionary.okuriNasi[0]
+    check(kanji.candidates[0].word == "漢字" && kanji.candidates[0].annotation == "kanji", "user dict: annotation split")
+    check(dictionary.okuriNasi[1].candidates[0].word == "a/b", "user dict: escaped slash decoded")
+
+    let serialized = dictionary.serialize()
+    check(serialized.contains("おくr /送/贈/[り/送/]/\n"), "user dict: okuri line round trip")
+    check(serialized.contains("かんじ /漢字;kanji/幹事/\n"), "user dict: annotation round trip")
+    check(serialized.contains("すらっしゅ /a[2f]b/\n"), "user dict: slash re-encoded on save")
+    check(UserDictionary.parse(serialized).serialize() == serialized, "user dict: serialize/parse round trip")
+
+    check(UserDictionaryEntry.isOkuriAri(reading: "おくr") && !UserDictionaryEntry.isOkuriAri(reading: "かんじ")
+          && !UserDictionaryEntry.isOkuriAri(reading: "abbrev"), "user dict: okuri-ari detection by trailing romaji")
+
+    // EUC-JP files are read and written back in EUC-JP
+    let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("nablaskk-userdict-euc")
+    try! text.data(using: .japaneseEUC)!.write(to: url)
+    var euc = try! UserDictionary.load(from: url)
+    check(euc.isEUC && euc.okuriNasi[0].reading == "かんじ", "user dict: EUC-JP file loads")
+    euc.okuriNasi[0].candidates.append(UserCandidate(word: "感じ"))
+    try! euc.save(to: url)
+    let data = try! Data(contentsOf: url)
+    check(String(data: data, encoding: .utf8) == nil && String(data: data, encoding: .japaneseEUC)!.contains("感じ"),
+          "user dict: EUC-JP file stays EUC-JP after save")
+    try? FileManager.default.removeItem(at: url)
+}
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)
