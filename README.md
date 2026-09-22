@@ -33,19 +33,26 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    `pkill NablaSKK` でも可)
 2. 「システム設定 → キーボード → 入力ソース → 編集 → +」で
    「日本語」から **NablaSKK** を追加します
-3. 辞書は `~/Library/Application Support/NablaSKK/dictionaries.conf`
-   で設定します(初回起動時に生成。既存 AquaSKK の SKK-JISYO.L が
-   あれば自動で利用します)。例:
+3. 辞書は、メニューバーの入力ソースメニューにある **「辞書を管理...」**
+   で設定します(設定アプリが開きます)。辞書ファイルをウィンドウに
+   ドラッグ&ドロップで追加でき、チェックボックスで有効/無効を切り替え、
+   ドラッグや矢印ボタンで検索順を並べ替えられます。変更は即座に保存され、
+   次にどこかのアプリで入力を始めたときに反映されます。
+
+   設定の実体は `~/Library/Application Support/NablaSKK/dictionaries.conf`
+   で、手で編集しても構いません(初回起動時に生成。既存 AquaSKK の
+   SKK-JISYO.L があれば自動で利用します)。例:
 
    ```
    0 /usr/local/share/skk/SKK-JISYO.L
+   - 5 /Users/me/my-dictionary.utf8
    4
    ```
 
    1行が「タイプ 場所」で、0=SKK-JISYO(EUC-JP/UTF-8 自動判別)、
    1=自動ダウンロード("host url path")、2=skkserv(host:port)、
-   4=Gadget(today/now/=式)、5=SKK-JISYO(UTF-8 固定)。
-   変更後は `pkill NablaSKK` で再読み込みされます。
+   4=Gadget(today/now/=式)、5=SKK-JISYO(UTF-8 固定)。行頭の `-` は
+   無効化した辞書です。
 
 ユーザー辞書は `~/Library/Application Support/NablaSKK/skk-jisyo`
 (UTF-8)に保存されます。
@@ -118,6 +125,7 @@ crates/
   skk-cli/        ターミナルで SKK 入力を試せるデモ
 data/             かな変換ルール・キーマップ(本家由来)
 swift/            Swift ラッパーとスモークテスト
+macos/            macOS 入力メソッド本体と辞書設定アプリ(SwiftUI)
 upstream-patches/ 本家 C++ 側の修正パッチ
 ```
 

@@ -52,6 +52,9 @@ void skk_session_free(SkkSession *session);
 int32_t skk_session_add_dictionary(SkkSession *session, int32_t dictionary_type,
                                    const char *location);
 
+/* Remove every system dictionary (the user dictionary is kept). */
+void skk_session_clear_dictionaries(SkkSession *session);
+
 /* Feed one key event. Returns 1 when consumed by the IME. */
 int32_t skk_session_handle(SkkSession *session, uint8_t charcode,
                            uint8_t keycode, uint32_t mods);

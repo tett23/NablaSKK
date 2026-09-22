@@ -149,6 +149,19 @@ pub unsafe extern "C" fn skk_session_add_dictionary(
     0
 }
 
+/// Remove every system dictionary added with `skk_session_add_dictionary`
+/// (the user dictionary is kept), e.g. before re-reading a changed
+/// dictionary configuration.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_clear_dictionaries(session: *mut SkkSession) {
+    if let Some(session) = session.as_mut() {
+        session.session.backend_mut().clear_dictionaries();
+    }
+}
+
 /// Feed one key event. `mods` is a bitmask: shift=2, ctrl=4, alt=8,
 /// meta=16 (matching keymap.conf). Returns 1 when the event was
 /// consumed by the IME, 0 when the host should handle the key itself.

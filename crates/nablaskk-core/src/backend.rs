@@ -45,6 +45,11 @@ impl Backend {
         self.dictionaries.push(dictionary);
     }
 
+    /// Drop all system dictionaries (the user dictionary stays).
+    pub fn clear_dictionaries(&mut self) {
+        self.dictionaries.clear();
+    }
+
     pub fn user_dictionary(&self) -> &LocalUserDictionary {
         &self.user_dictionary
     }

@@ -67,6 +67,11 @@ public final class SKKSession {
         }
     }
 
+    /// Remove every system dictionary (the user dictionary is kept).
+    public func clearDictionaries() {
+        skk_session_clear_dictionaries(session)
+    }
+
     /// Feed one key event. Returns true when the IME consumed it.
     @discardableResult
     public func handle(charcode: UInt8, keycode: UInt8 = 0, mods: Modifiers = []) -> Bool {

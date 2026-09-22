@@ -17,12 +17,7 @@ import InputMethodKit
 /// large; per-client sessions would duplicate them). Pending composition
 /// is cleared when a different client activates.
 enum Engine {
-    static let supportDirectory: URL = {
-        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("NablaSKK", isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
-    }()
+    static var supportDirectory: URL { DictionaryConfig.supportDirectory }
 
     static let session: SKKSession = {
         let userDictionary = supportDirectory.appendingPathComponent("skk-jisyo").path
@@ -33,51 +28,34 @@ enum Engine {
         return session
     }()
 
-    /// dictionaries.conf: one "type location" per line
-    /// (0=SKK-JISYO with encoding auto-detection, 1=auto-update
-    ///  "host url path", 2=skkserv host:port, 4=gadget, 5=UTF-8 forced).
-    /// Created with defaults on first launch.
+    private static var loadedConfigDate: Date?
+
+    /// Reload the dictionaries when dictionaries.conf changed on disk
+    /// (the preferences app saves it; the change takes effect the next
+    /// time the input method becomes active).
+    static func reloadDictionariesIfChanged() {
+        guard DictionaryConfig.modificationDate != loadedConfigDate else { return }
+
+        session.clearDictionaries()
+        loadDictionaries(into: session)
+    }
+
     private static func loadDictionaries(into session: SKKSession) {
-        let config = supportDirectory.appendingPathComponent("dictionaries.conf")
+        loadedConfigDate = DictionaryConfig.modificationDate
 
-        if !FileManager.default.fileExists(atPath: config.path) {
-            var template = """
-            # NablaSKK dictionaries: "type location" per line.
-            #   0 = SKK-JISYO (encoding auto-detected)
-            #   1 = auto-update "host url path"
-            #   2 = skkserv host:port    4 = gadget (today/now/=expr)
-            #   5 = SKK-JISYO (UTF-8 forced)
-            # Add your main dictionary, e.g.:
-            #   0 /usr/local/share/skk/SKK-JISYO.L
-            4
-
-            """
-
-            // Reuse an existing AquaSKK dictionary when present
-            let aquaskkDictionary = FileManager.default
-                .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("AquaSKK/SKK-JISYO.L")
-            if FileManager.default.fileExists(atPath: aquaskkDictionary.path) {
-                template += "0 \(aquaskkDictionary.path)\n"
-            }
-
-            try? template.write(to: config, atomically: true, encoding: .utf8)
+        for entry in DictionaryConfig.load() where entry.enabled {
+            guard let type = SKKSession.DictionaryType(rawValue: entry.kind.rawValue) else { continue }
+            session.addDictionary(type, location: entry.location)
         }
 
-        guard let text = try? String(contentsOf: config, encoding: .utf8) else { return }
+        loadedConfigDate = DictionaryConfig.modificationDate
+    }
 
-        for line in text.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+    /// The preferences app bundled inside the input method.
+    static func openPreferences() {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("NablaSKK Preferences.app") else { return }
 
-            let fields = trimmed.split(separator: " ", maxSplits: 1)
-            guard let typeValue = Int32(fields[0]),
-                  let type = SKKSession.DictionaryType(rawValue: typeValue)
-            else { continue }
-
-            let location = fields.count > 1 ? String(fields[1]) : ""
-            session.addDictionary(type, location: location)
-        }
+        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 }
 
@@ -108,6 +86,8 @@ public class SKKRustInputController: IMKInputController {
     private static weak var activeController: SKKRustInputController?
 
     public override func activateServer(_ sender: Any!) {
+        Engine.reloadDictionariesIfChanged()
+
         if Self.activeController !== self {
             // Another client had pending composition; drop it
             Engine.session.clear()
@@ -138,6 +118,19 @@ public class SKKRustInputController: IMKInputController {
             insert(fixed, to: client)
         }
         setMarkedText("", to: client)
+    }
+
+    // Items appended to the input source menu in the menu bar
+    public override func menu() -> NSMenu! {
+        let menu = NSMenu()
+        let item = NSMenuItem(title: "辞書を管理...", action: #selector(openPreferences(_:)), keyEquivalent: "")
+        item.target = self
+        menu.addItem(item)
+        return menu
+    }
+
+    @objc private func openPreferences(_ sender: Any?) {
+        Engine.openPreferences()
     }
 
     public override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {

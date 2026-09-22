@@ -99,6 +99,60 @@ do {
           "l: consumed, ascii mode, no text and no marked text")
 }
 
+// dictionaries.conf: parse / serialize round trip, disabled entries, legacy lines
+do {
+    let text = """
+    # comment
+    0 /usr/share/skk/SKK-JISYO.L
+    - 5 /Users/me/My Dictionary.utf8
+    4
+    2 localhost:1178
+    garbage line
+    """
+    let entries = DictionaryConfig.parse(text)
+    check(entries.count == 4, "config: parses four entries, skipping comments and garbage")
+    check(entries[0].enabled && entries[0].kind == .common && entries[0].location == "/usr/share/skk/SKK-JISYO.L",
+          "config: enabled common dictionary")
+    check(!entries[1].enabled && entries[1].kind == .commonUTF8 && entries[1].location == "/Users/me/My Dictionary.utf8",
+          "config: disabled entry keeps its type and a location with spaces")
+    check(entries[2].kind == .gadget && entries[2].location.isEmpty, "config: gadget without location")
+    check(entries[3].kind == .proxy && entries[3].location == "localhost:1178", "config: skkserv")
+
+    let reparsed = DictionaryConfig.parse(DictionaryConfig.serialize(entries))
+    check(reparsed.map { ($0.enabled, $0.kind, $0.location) }.elementsEqual(
+            entries.map { ($0.enabled, $0.kind, $0.location) }, by: { $0 == $1 }),
+          "config: serialize/parse round trip")
+    check(DictionaryConfig.serialize(entries).contains("\n- 5 /Users/me/My Dictionary.utf8\n"),
+          "config: disabled entries are written with a leading dash")
+}
+
+// Importing dictionaries: copy into the support directory, reuse identical
+// copies, keep distinct files with the same name apart
+do {
+    let scratch = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("nablaskk-import-test")
+    try? FileManager.default.removeItem(at: scratch)
+    try! FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+    let a = scratch.appendingPathComponent("SKK-JISYO.test")
+    let b = scratch.appendingPathComponent("other/SKK-JISYO.test")
+    try! FileManager.default.createDirectory(at: b.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try! "a".write(to: a, atomically: true, encoding: .utf8)
+    try! "b".write(to: b, atomically: true, encoding: .utf8)
+
+    let imported = try! DictionaryConfig.importDictionary(at: a)
+    check(imported.hasPrefix(DictionaryConfig.dictionariesDirectory.path)
+          && FileManager.default.contentsEqual(atPath: a.path, andPath: imported),
+          "import: copied into the dictionaries directory")
+    check(try! DictionaryConfig.importDictionary(at: a) == imported, "import: identical file reuses the copy")
+    let second = try! DictionaryConfig.importDictionary(at: b)
+    check(second != imported && second.hasSuffix("SKK-JISYO-1.test"), "import: different file with the same name gets a suffix")
+    check(try! DictionaryConfig.importDictionary(at: URL(fileURLWithPath: imported)) == imported,
+          "import: a file already in the support directory is used in place")
+
+    try? FileManager.default.removeItem(atPath: imported)
+    try? FileManager.default.removeItem(atPath: second)
+    try? FileManager.default.removeItem(at: scratch)
+}
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)
