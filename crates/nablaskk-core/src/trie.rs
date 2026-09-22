@@ -278,6 +278,23 @@ mod tests {
     }
 
     #[test]
+    fn patch_overrides_rule() {
+        let mut conv = converter();
+        let (before, _) = conv.convert(Hirakana, ",");
+        assert_eq!(before.output, "、");
+
+        // comma.rule / period.rule from the original data/ directory
+        conv.load("&comma;,，,，,&comma;\n.,．,．,.\n");
+        let (comma, _) = conv.convert(Hirakana, ",");
+        let (period, _) = conv.convert(Hirakana, ".");
+        assert_eq!(comma.output, "，");
+        assert_eq!(period.output, "．");
+        // untouched rules survive the patch
+        let (kana, _) = conv.convert(Hirakana, "ka");
+        assert_eq!(kana.output, "か");
+    }
+
+    #[test]
     fn passthrough() {
         let conv = converter();
 

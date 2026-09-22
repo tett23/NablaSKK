@@ -67,6 +67,16 @@ public final class SKKSession {
         }
     }
 
+    /// Restore the built-in romaji-kana rules, dropping applied patches.
+    public func resetKanaRules() {
+        skk_session_reset_kana_rules(session)
+    }
+
+    /// Merge kana-rule text (kana-rule.conf format) into the current rules.
+    public func patchKanaRules(_ rules: String) {
+        rules.withCString { skk_session_patch_kana_rules(session, $0) }
+    }
+
     /// Remove every system dictionary (the user dictionary is kept).
     public func clearDictionaries() {
         skk_session_clear_dictionaries(session)

@@ -1019,6 +1019,10 @@ impl Session {
         &self.param.backend
     }
 
+    pub fn converter_mut(&mut self) -> &mut RomanKanaConverter {
+        &mut self.param.converter
+    }
+
     pub fn config(&self) -> &Config {
         &self.param.config
     }

@@ -149,6 +149,34 @@ pub unsafe extern "C" fn skk_session_add_dictionary(
     0
 }
 
+/// Restore the built-in romaji-kana rules (kana-rule.conf), dropping any
+/// patches applied with `skk_session_patch_kana_rules`.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_reset_kana_rules(session: *mut SkkSession) {
+    let Some(session) = session.as_mut() else { return };
+
+    let mut converter = RomanKanaConverter::new();
+    converter.load(include_str!("../../../data/kana-rule.utf8.conf"));
+    *session.session.converter_mut() = converter;
+}
+
+/// Merge kana-rule text (UTF-8, same format as kana-rule.conf) into the
+/// current rules; later rules override earlier ones for the same romaji.
+/// Used for sub-rules such as comma.rule / period.rule.
+///
+/// # Safety
+/// `session` must be a valid session pointer; `rules` a valid C string.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_patch_kana_rules(session: *mut SkkSession, rules: *const c_char) {
+    let Some(session) = session.as_mut() else { return };
+    let Some(rules) = cstr(rules) else { return };
+
+    session.session.converter_mut().load(rules);
+}
+
 /// Remove every system dictionary added with `skk_session_add_dictionary`
 /// (the user dictionary is kept), e.g. before re-reading a changed
 /// dictionary configuration.

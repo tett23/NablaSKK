@@ -13,6 +13,8 @@ struct RootView: View {
                 .tabItem { Label("辞書", systemImage: "books.vertical") }
             UserDictionaryView()
                 .tabItem { Label("ユーザー辞書", systemImage: "person.text.rectangle") }
+            InputSettingsView()
+                .tabItem { Label("入力", systemImage: "keyboard") }
         }
         .padding(.top, 4)
         .frame(minWidth: 720, minHeight: 440)

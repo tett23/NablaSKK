@@ -52,6 +52,11 @@ void skk_session_free(SkkSession *session);
 int32_t skk_session_add_dictionary(SkkSession *session, int32_t dictionary_type,
                                    const char *location);
 
+/* Restore the built-in romaji-kana rules, dropping applied patches. */
+void skk_session_reset_kana_rules(SkkSession *session);
+/* Merge kana-rule text (UTF-8, kana-rule.conf format) into the rules. */
+void skk_session_patch_kana_rules(SkkSession *session, const char *rules);
+
 /* Remove every system dictionary (the user dictionary is kept). */
 void skk_session_clear_dictionaries(SkkSession *session);
 

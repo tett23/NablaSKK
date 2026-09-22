@@ -18,14 +18,17 @@ CONTENTS="$APP/Contents"
 SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Shared/DictionaryConfig.swift \
     macos/Shared/UserDictionaryModel.swift \
+    macos/Shared/InputSettings.swift \
     macos/Sources/KeyTranslator.swift \
     macos/Sources/ClientQuirks.swift \
     macos/Sources/SKKRustInputController.swift \
     macos/Sources/main.swift"
 PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
     macos/Shared/UserDictionaryModel.swift \
+    macos/Shared/InputSettings.swift \
     macos/Preferences/PreferencesApp.swift \
-    macos/Preferences/UserDictionaryView.swift"
+    macos/Preferences/UserDictionaryView.swift \
+    macos/Preferences/InputSettingsView.swift"
 PREFS_APP="$CONTENTS/Resources/NablaSKK Preferences.app"
 MACOS_TARGET=12
 

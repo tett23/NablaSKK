@@ -24,9 +24,27 @@ enum Engine {
         let session = SKKSession(userDictionaryPath: userDictionary)
 
         loadDictionaries(into: session)
+        applyInputSettings(to: session)
 
         return session
     }()
+
+    private static var loadedSettingsDate: Date?
+
+    /// Apply settings.conf (punctuation sub-rules) when it changed on disk.
+    static func reloadInputSettingsIfChanged() {
+        guard InputSettings.modificationDate != loadedSettingsDate else { return }
+        applyInputSettings(to: session)
+    }
+
+    private static func applyInputSettings(to session: SKKSession) {
+        loadedSettingsDate = InputSettings.modificationDate
+        session.resetKanaRules()
+        let patch = InputSettings.load().kanaRulePatch
+        if !patch.isEmpty {
+            session.patchKanaRules(patch)
+        }
+    }
 
     private static var loadedConfigDate: Date?
 
@@ -87,6 +105,7 @@ public class SKKRustInputController: IMKInputController {
 
     public override func activateServer(_ sender: Any!) {
         Engine.reloadDictionariesIfChanged()
+        Engine.reloadInputSettingsIfChanged()
         Engine.session.reloadUserDictionaryIfChanged()
 
         if Self.activeController !== self {

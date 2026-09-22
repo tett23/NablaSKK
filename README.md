@@ -54,6 +54,10 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    4=Gadget(today/now/=式)、5=SKK-JISYO(UTF-8 固定)。行頭の `-` は
    無効化した辞書です。
 
+句読点は設定アプリの「入力」タブで、読点(、/，)と句点(。/．)を
+それぞれ独立に切り替えられます(`settings.conf` に保存、次に入力を
+始めたときに反映)。
+
 ユーザー辞書は `~/Library/Application Support/NablaSKK/skk-jisyo`
 (UTF-8)に保存されます。設定アプリの「ユーザー辞書」タブで、見出し語の
 検索・追加・削除、候補の追加・並べ替え・注釈の編集ができます。編集は

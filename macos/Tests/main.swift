@@ -196,6 +196,29 @@ do {
     try? FileManager.default.removeItem(at: url)
 }
 
+// Input settings: independent punctuation options and the rule patch they produce
+do {
+    check(InputSettings.parse("").kanaRulePatch.isEmpty, "settings: defaults produce no patch")
+    var s = InputSettings.parse("comma=fullwidth\nperiod=japanese\n")
+    check(s.fullWidthComma && !s.fullWidthPeriod, "settings: comma alone")
+    check(s.kanaRulePatch == InputSettings.commaRule, "settings: comma-only patch")
+    s = InputSettings.parse("# c\nperiod = fullwidth\n")
+    check(!s.fullWidthComma && s.fullWidthPeriod && s.kanaRulePatch == InputSettings.periodRule,
+          "settings: period alone, whitespace tolerated")
+    let both = InputSettings(fullWidthComma: true, fullWidthPeriod: true)
+    check(InputSettings.parse(both.serialize()) == both, "settings: serialize/parse round trip")
+    check(both.kanaRulePatch == InputSettings.commaRule + InputSettings.periodRule, "settings: both patches")
+
+    // End to end through the engine: patch, then reset
+    let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-key-test")
+    session.patchKanaRules(both.kanaRulePatch)
+    for c in ",.".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "，．", "settings: engine types full-width punctuation after patch")
+    session.resetKanaRules()
+    for c in ",.".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "、。", "settings: reset restores default punctuation")
+}
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)

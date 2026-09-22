@@ -93,6 +93,12 @@
   GUI から追加した辞書は `~/Library/Application Support/NablaSKK/dictionaries/`
   にコピーして、そのパスを設定に書く(同名・同内容は再利用、同名・別内容は
   `-1` の連番)。変更は即保存し、IME は `activateServer` 時に mtime で再読み込み。
+- 句読点の切り替えは本家と同じく kana-rule のサブルール(`data/comma.rule`,
+  `data/period.rule` の中身を Swift 側に埋め込み)で実現。エンジンには
+  `reset_kana_rules` / `patch_kana_rules` の FFI を追加し、IME は
+  `settings.conf`(key=value)の mtime を見て「組み込みルールに戻す → 有効な
+  サブルールを重ねる」を毎回やり直す(差分適用はしない)。読点と句点は
+  独立したオプション。
 - 候補ウィンドウは IMKCandidates ではなくマークテキスト内にインライン描画
   (`【a:候補 s:候補 …】`)。ラベル選択はエンジン側の `selector.select` が
   処理する。独立ウィンドウ化は未着手。
