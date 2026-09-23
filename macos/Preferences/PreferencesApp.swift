@@ -141,12 +141,19 @@ final class DictionaryStore: ObservableObject {
         }
     }
 
-    /// Dropped or chosen files are copied into the support directory.
+    /// Dropped or chosen files are copied into the support directory. A file
+    /// with the same name overwrites the earlier copy, and the entry that
+    /// already points at that copy is kept (and re-enabled) instead of
+    /// being listed twice.
     func add(fileURLs: [URL]) {
         for url in fileURLs where url.isFileURL {
             do {
                 let path = try DictionaryConfig.importDictionary(at: url)
-                entries.append(DictionaryEntry(kind: .common, location: path))
+                if let index = entries.firstIndex(where: { $0.kind.isFileBased && $0.location == path }) {
+                    entries[index].enabled = true
+                } else {
+                    entries.append(DictionaryEntry(kind: .common, location: path))
+                }
             } catch {
                 saveError = "\(url.lastPathComponent) をコピーできません: \(error.localizedDescription)"
             }
@@ -180,6 +187,17 @@ struct DictionaryListView: View {
                  + "~/Library/Application Support/NablaSKK/dictionaries にコピーして追加します。")
                 .font(.callout)
                 .foregroundColor(.secondary)
+
+            HStack(spacing: 12) {
+                Text("").frame(width: DictionaryRow.toggleWidth)
+                Text("名前").frame(width: DictionaryRow.nameWidth, alignment: .leading)
+                Text("種類").frame(width: DictionaryRow.kindWidth, alignment: .leading)
+                Text("場所")
+                Spacer()
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 8)
 
             List(selection: $selection) {
                 ForEach($store.entries) { $entry in
@@ -267,13 +285,24 @@ struct DictionaryListView: View {
 }
 
 struct DictionaryRow: View {
+    static let toggleWidth: CGFloat = 20
+    static let nameWidth: CGFloat = 160
+    static let kindWidth: CGFloat = 250
+
     @Binding var entry: DictionaryEntry
 
     var body: some View {
         HStack(spacing: 12) {
             Toggle("", isOn: $entry.enabled)
                 .labelsHidden()
+                .frame(width: Self.toggleWidth)
                 .help("チェックを外すと検索対象から外れます")
+
+            Text(entry.name)
+                .frame(width: Self.nameWidth, alignment: .leading)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(entry.name)
 
             Picker("", selection: $entry.kind) {
                 ForEach(DictionaryEntry.Kind.allCases) { kind in
@@ -281,7 +310,7 @@ struct DictionaryRow: View {
                 }
             }
             .labelsHidden()
-            .frame(width: 250)
+            .frame(width: Self.kindWidth)
 
             if entry.kind.needsLocation {
                 TextField(entry.kind.locationHint, text: $entry.location)

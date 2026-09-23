@@ -41,12 +41,34 @@ struct DictionaryEntry: Identifiable, Equatable, Codable {
         }
 
         var needsLocation: Bool { self != .gadget }
+
+        /// Dictionaries whose location is a local file path.
+        var isFileBased: Bool { self == .common || self == .commonUTF8 }
     }
 
     var id = UUID()
     var enabled = true
     var kind: Kind
     var location: String
+
+    /// Short label shown in the dictionary list: the file name for file
+    /// based dictionaries, the location itself otherwise.
+    var name: String {
+        switch kind {
+        case .common, .commonUTF8:
+            let file = (location as NSString).lastPathComponent
+            return file.isEmpty ? "(未設定)" : file
+        case .autoUpdate:
+            let fields = location.split(separator: " ")
+            let path = fields.count >= 3 ? String(fields[2]) : location
+            let file = (path as NSString).lastPathComponent
+            return file.isEmpty ? "(未設定)" : file
+        case .proxy:
+            return location.isEmpty ? "(未設定)" : location
+        case .gadget:
+            return "gadget"
+        }
+    }
 
     var line: String {
         let body = kind.needsLocation ? "\(kind.rawValue) \(location)" : "\(kind.rawValue)"
@@ -145,37 +167,29 @@ enum DictionaryConfig {
 
     /// Copy a dictionary file into `dictionariesDirectory` and return the
     /// copy's path. A file already inside the support directory is used in
-    /// place; an existing copy with the same name and contents is reused;
-    /// otherwise the copy gets a numbered suffix.
+    /// place. An existing copy with the same name is overwritten, so adding
+    /// a newer version of a dictionary replaces the old one.
     static func importDictionary(at source: URL) throws -> String {
         let manager = FileManager.default
-        let directory = dictionariesDirectory
 
         if source.standardizedFileURL.path.hasPrefix(supportDirectory.standardizedFileURL.path + "/") {
             return source.path
         }
 
-        let base = source.deletingPathExtension().lastPathComponent
-        let ext = source.pathExtension
-        var attempt = 0
-
-        while true {
-            var name = base
-            if attempt > 0 { name += "-\(attempt)" }
-            if !ext.isEmpty { name += ".\(ext)" }
-            let destination = directory.appendingPathComponent(name)
-
-            if !manager.fileExists(atPath: destination.path) {
-                try manager.copyItem(at: source, to: destination)
-                return destination.path
-            }
-
-            if manager.contentsEqual(atPath: source.path, andPath: destination.path) {
-                return destination.path
-            }
-
-            attempt += 1
+        let directory = dictionariesDirectory
+        let destination = directory.appendingPathComponent(source.lastPathComponent)
+        if manager.fileExists(atPath: destination.path) {
+            // Copy next to the target first, then swap, so a failed copy
+            // never leaves a half-written dictionary in place.
+            let staging = directory.appendingPathComponent(".\(source.lastPathComponent).importing")
+            try? manager.removeItem(at: staging)
+            try manager.copyItem(at: source, to: staging)
+            _ = try manager.replaceItemAt(destination, withItemAt: staging, backupItemName: nil,
+                                          options: .usingNewMetadataOnly)
+        } else {
+            try manager.copyItem(at: source, to: destination)
         }
+        return destination.path
     }
 
     static var modificationDate: Date? {

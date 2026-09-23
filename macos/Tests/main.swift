@@ -124,10 +124,15 @@ do {
           "config: serialize/parse round trip")
     check(DictionaryConfig.serialize(entries).contains("\n- 5 /Users/me/My Dictionary.utf8\n"),
           "config: disabled entries are written with a leading dash")
+    check(entries.map(\.name) == ["SKK-JISYO.L", "My Dictionary.utf8", "gadget", "localhost:1178"],
+          "config: list names come from the file name or the location")
+    check(DictionaryEntry(kind: .autoUpdate, location: "openlab.jp /skk/dict/SKK-JISYO.L /tmp/SKK-JISYO.L").name == "SKK-JISYO.L",
+          "config: auto-update name uses the save path")
+    check(DictionaryEntry(kind: .common, location: "").name == "(未設定)", "config: empty location shows a placeholder")
 }
 
-// Importing dictionaries: copy into the support directory, reuse identical
-// copies, keep distinct files with the same name apart
+// Importing dictionaries: copy into the support directory, overwrite an
+// earlier copy with the same name, leave the source untouched
 do {
     let scratch = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("nablaskk-import-test")
     try? FileManager.default.removeItem(at: scratch)
@@ -144,12 +149,16 @@ do {
           "import: copied into the dictionaries directory")
     check(try! DictionaryConfig.importDictionary(at: a) == imported, "import: identical file reuses the copy")
     let second = try! DictionaryConfig.importDictionary(at: b)
-    check(second != imported && second.hasSuffix("SKK-JISYO-1.test"), "import: different file with the same name gets a suffix")
+    check(second == imported && (try? String(contentsOfFile: imported, encoding: .utf8)) == "b",
+          "import: a different file with the same name overwrites the copy")
+    check((try? String(contentsOf: b, encoding: .utf8)) == "b", "import: the source file is left in place")
+    check(!FileManager.default.fileExists(atPath: DictionaryConfig.dictionariesDirectory
+              .appendingPathComponent(".SKK-JISYO.test.importing").path),
+          "import: no staging file is left behind")
     check(try! DictionaryConfig.importDictionary(at: URL(fileURLWithPath: imported)) == imported,
           "import: a file already in the support directory is used in place")
 
     try? FileManager.default.removeItem(atPath: imported)
-    try? FileManager.default.removeItem(atPath: second)
     try? FileManager.default.removeItem(at: scratch)
 }
 
