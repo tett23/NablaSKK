@@ -30,7 +30,6 @@ PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
     macos/Shared/InputSettings.swift \
     macos/Shared/KeymapConfig.swift \
     macos/Preferences/PreferencesApp.swift \
-    macos/Shared/KeymapConfig.swift \
     macos/Preferences/UserDictionaryView.swift \
     macos/Preferences/InputSettingsView.swift \
     macos/Preferences/KeymapSettingsView.swift"

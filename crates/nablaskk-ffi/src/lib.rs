@@ -278,34 +278,6 @@ pub unsafe extern "C" fn skk_session_handle(
 /// with the system pasteboard contents before feeding the paste key.
 ///
 /// # Safety
-/// Restore the built-in keymap (keymap.conf), dropping any overrides
-/// applied with `skk_session_override_keymap`.
-///
-/// # Safety
-/// `session` must be a valid session pointer.
-#[no_mangle]
-pub unsafe extern "C" fn skk_session_reset_keymap(session: *mut SkkSession) {
-    let Some(session) = session.as_mut() else { return };
-
-    let mut keymap = Keymap::new();
-    keymap.load(include_str!("../../../data/keymap.conf"));
-    session.keymap = keymap;
-}
-
-/// Rebind keys from keymap.conf-format text: each line replaces every
-/// key currently bound to its symbol (e.g. `SKK_JMODE ctrl::k` makes
-/// Ctrl-K the only kana-mode key). Used by the preferences app.
-///
-/// # Safety
-/// `session` must be a valid session pointer; `text` a valid C string.
-#[no_mangle]
-pub unsafe extern "C" fn skk_session_override_keymap(session: *mut SkkSession, text: *const c_char) {
-    let Some(session) = session.as_mut() else { return };
-    let Some(text) = cstr(text) else { return };
-
-    session.keymap.load_replacing(text);
-}
-
 /// `session` must be a valid session pointer; `text` a valid C string.
 #[no_mangle]
 pub unsafe extern "C" fn skk_session_set_clipboard(session: *mut SkkSession, text: *const c_char) {

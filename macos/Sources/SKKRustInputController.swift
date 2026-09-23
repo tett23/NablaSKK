@@ -145,7 +145,6 @@ public class SKKRustInputController: IMKInputController {
 
         if Self.activeController !== self {
             // Another client had pending composition; drop it
-        Engine.reloadKeymapIfChanged()
             Engine.session.clear()
             _ = Engine.session.takeFixed()
             Self.activeController = self
