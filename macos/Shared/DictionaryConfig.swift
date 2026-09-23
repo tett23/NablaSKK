@@ -18,16 +18,23 @@ struct DictionaryEntry: Identifiable, Equatable, Codable {
         case proxy = 2
         case gadget = 4
         case commonUTF8 = 5
+        case proxyUTF8 = 6
 
         var id: Int32 { rawValue }
+
+        /// Kinds offered by the "+" menu. skkserv entries are configured
+        /// on the skkserv tab so they always come after the local
+        /// dictionaries; hand-written ones are still shown and editable.
+        static var addable: [Kind] { allCases.filter { $0 != .proxy && $0 != .proxyUTF8 } }
 
         var label: String {
             switch self {
             case .common: return "SKK 辞書 (EUC-JP / UTF-8 自動判別)"
             case .autoUpdate: return "SKK 辞書 (自動ダウンロード)"
-            case .proxy: return "skkserv"
+            case .proxy: return "skkserv (EUC-JP)"
             case .gadget: return "プログラム実行変換 (today, now, =式)"
             case .commonUTF8: return "SKK 辞書 (UTF-8)"
+            case .proxyUTF8: return "skkserv (UTF-8)"
             }
         }
 
@@ -35,7 +42,7 @@ struct DictionaryEntry: Identifiable, Equatable, Codable {
             switch self {
             case .common, .commonUTF8: return "辞書ファイルのパス"
             case .autoUpdate: return "host url 保存先パス (例: openlab.jp /skk/dict/SKK-JISYO.L /path/to/SKK-JISYO.L)"
-            case .proxy: return "host:port (例: localhost:1178)"
+            case .proxy, .proxyUTF8: return "host:port (例: localhost:1178)"
             case .gadget: return "(場所は不要)"
             }
         }
@@ -63,7 +70,7 @@ struct DictionaryEntry: Identifiable, Equatable, Codable {
             let path = fields.count >= 3 ? String(fields[2]) : location
             let file = (path as NSString).lastPathComponent
             return file.isEmpty ? "(未設定)" : file
-        case .proxy:
+        case .proxy, .proxyUTF8:
             return location.isEmpty ? "(未設定)" : location
         case .gadget:
             return "gadget"
@@ -93,7 +100,7 @@ enum DictionaryConfig {
     #   0 = SKK-JISYO (encoding auto-detected)
     #   1 = auto-update "host url path"
     #   2 = skkserv host:port    4 = gadget (today/now/=expr)
-    #   5 = SKK-JISYO (UTF-8 forced)
+    #   5 = SKK-JISYO (UTF-8 forced)    6 = skkserv host:port (UTF-8)
     # A leading "-" disables an entry. Edit with the NablaSKK preferences
     # app (input menu > 辞書を管理...) or by hand.
     """

@@ -15,6 +15,47 @@ struct InputSettings: Equatable {
     /// Type "." as "．" instead of "。".
     var fullWidthPeriod = false
 
+    /// Wire encoding of an external skkserv.
+    enum SkkservEncoding: String, CaseIterable, Identifiable {
+        case eucJP = "euc-jp"
+        case utf8 = "utf-8"
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .eucJP: return "EUC-JP"
+            case .utf8: return "UTF-8"
+            }
+        }
+
+        /// Dictionary type id for the engine (2 = skkserv EUC-JP,
+        /// 6 = skkserv UTF-8), matching `DictionaryEntry.Kind`.
+        var dictionaryKind: DictionaryEntry.Kind {
+            switch self {
+            case .eucJP: return .proxy
+            case .utf8: return .proxyUTF8
+            }
+        }
+    }
+
+    /// Query an external skkserv after every local dictionary.
+    var skkservEnabled = false
+    var skkservHost = "localhost"
+    var skkservPort = 1178
+    var skkservEncoding = SkkservEncoding.eucJP
+
+    /// "host:port" as the engine's proxy dictionary expects it.
+    var skkservLocation: String {
+        "\(skkservHost.trimmingCharacters(in: .whitespaces)):\(skkservPort)"
+    }
+
+    /// Whether the skkserv settings describe a usable server.
+    var skkservIsConfigured: Bool {
+        skkservEnabled && !skkservHost.trimmingCharacters(in: .whitespaces).isEmpty
+            && (1...65535).contains(skkservPort)
+    }
+
     static let fileName = "settings.conf"
     static var fileURL: URL { DictionaryConfig.supportDirectory.appendingPathComponent(fileName) }
 
@@ -22,6 +63,10 @@ struct InputSettings: Equatable {
     # NablaSKK input settings: key=value per line.
     #   comma=fullwidth   type , as ， (default: 、)
     #   period=fullwidth  type . as ． (default: 。)
+    #   skkserv=on        also query an skkserv, after the local dictionaries
+    #   skkserv_host=localhost
+    #   skkserv_port=1178
+    #   skkserv_encoding=euc-jp | utf-8
     """
 
     // Sub-rules from AquaSKK's data/comma.rule and data/period.rule
@@ -44,6 +89,10 @@ struct InputSettings: Equatable {
             switch key {
             case "comma": settings.fullWidthComma = value == "fullwidth"
             case "period": settings.fullWidthPeriod = value == "fullwidth"
+            case "skkserv": settings.skkservEnabled = value == "on"
+            case "skkserv_host": settings.skkservHost = value
+            case "skkserv_port": settings.skkservPort = Int(value) ?? 1178
+            case "skkserv_encoding": settings.skkservEncoding = SkkservEncoding(rawValue: value.lowercased()) ?? .eucJP
             default: break
             }
         }
@@ -54,6 +103,10 @@ struct InputSettings: Equatable {
         Self.header + "\n"
             + "comma=\(fullWidthComma ? "fullwidth" : "japanese")\n"
             + "period=\(fullWidthPeriod ? "fullwidth" : "japanese")\n"
+            + "skkserv=\(skkservEnabled ? "on" : "off")\n"
+            + "skkserv_host=\(skkservHost)\n"
+            + "skkserv_port=\(skkservPort)\n"
+            + "skkserv_encoding=\(skkservEncoding.rawValue)\n"
     }
 
     static func load() -> InputSettings {

@@ -50,9 +50,13 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    ```
 
    1行が「タイプ 場所」で、0=SKK-JISYO(EUC-JP/UTF-8 自動判別)、
-   1=自動ダウンロード("host url path")、2=skkserv(host:port)、
-   4=Gadget(today/now/=式)、5=SKK-JISYO(UTF-8 固定)。行頭の `-` は
-   無効化した辞書です。
+   1=自動ダウンロード("host url path")、2=skkserv(host:port、EUC-JP)、
+   4=Gadget(today/now/=式)、5=SKK-JISYO(UTF-8 固定)、
+   6=skkserv(host:port、UTF-8)。行頭の `-` は無効化した辞書です。
+
+skkserv は設定アプリの「skkserv」タブでホスト・ポート・文字コード
+(EUC-JP / UTF-8)を設定できます(`settings.conf` に保存)。ここで設定した
+サーバーはローカルの辞書をすべて検索したあとに問い合わせます。
 
 句読点は設定アプリの「入力」タブで、読点(、/，)と句点(。/．)を
 それぞれ独立に切り替えられます(`settings.conf` に保存、次に入力を

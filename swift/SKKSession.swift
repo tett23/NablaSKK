@@ -33,6 +33,8 @@ public final class SKKSession {
         case proxy = 2
         case gadget = 4
         case commonUTF8 = 5
+        /// skkserv speaking UTF-8 (NablaSKK addition)
+        case proxyUTF8 = 6
     }
 
     public enum InputMode: Int32 {

@@ -117,6 +117,10 @@ do {
           "config: disabled entry keeps its type and a location with spaces")
     check(entries[2].kind == .gadget && entries[2].location.isEmpty, "config: gadget without location")
     check(entries[3].kind == .proxy && entries[3].location == "localhost:1178", "config: skkserv")
+    check(DictionaryConfig.parse("6 localhost:1178")[0].kind == .proxyUTF8, "config: type 6 is skkserv (UTF-8)")
+    check(!DictionaryEntry.Kind.addable.contains(.proxy) && !DictionaryEntry.Kind.addable.contains(.proxyUTF8)
+          && DictionaryEntry.Kind.addable.contains(.common),
+          "config: skkserv kinds are not offered by the + menu")
 
     let reparsed = DictionaryConfig.parse(DictionaryConfig.serialize(entries))
     check(reparsed.map { ($0.enabled, $0.kind, $0.location) }.elementsEqual(
@@ -217,6 +221,23 @@ do {
     let both = InputSettings(fullWidthComma: true, fullWidthPeriod: true)
     check(InputSettings.parse(both.serialize()) == both, "settings: serialize/parse round trip")
     check(both.kanaRulePatch == InputSettings.commaRule + InputSettings.periodRule, "settings: both patches")
+
+    // skkserv block: defaults, parse, round trip, validation
+    let defaults = InputSettings()
+    check(!defaults.skkservEnabled && defaults.skkservHost == "localhost" && defaults.skkservPort == 1178
+          && defaults.skkservEncoding == .eucJP && !defaults.skkservIsConfigured,
+          "settings: skkserv defaults off, localhost:1178, EUC-JP")
+    let server = InputSettings.parse("skkserv=on\nskkserv_host=skk.example.org\nskkserv_port=1179\nskkserv_encoding=UTF-8\n")
+    check(server.skkservIsConfigured && server.skkservLocation == "skk.example.org:1179"
+          && server.skkservEncoding == .utf8 && server.skkservEncoding.dictionaryKind == .proxyUTF8,
+          "settings: skkserv host/port/encoding parsed (UTF-8 → type 6)")
+    check(InputSettings.parse(server.serialize()) == server, "settings: skkserv serialize/parse round trip")
+    check(InputSettings.parse("skkserv=on\nskkserv_host=  \n").skkservIsConfigured == false,
+          "settings: blank host is not configured")
+    check(InputSettings.parse("skkserv=on\nskkserv_port=70000\n").skkservIsConfigured == false,
+          "settings: out-of-range port is not configured")
+    check(InputSettings.parse("skkserv_encoding=garbage\n").skkservEncoding == .eucJP,
+          "settings: unknown encoding falls back to EUC-JP")
 
     // End to end through the engine: patch, then reset
     let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-key-test")

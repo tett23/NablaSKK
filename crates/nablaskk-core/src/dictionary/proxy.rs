@@ -10,6 +10,7 @@
 
 //! External skkserv dictionary (port of `SKKProxyDictionary`).
 
+use super::file::Encoding;
 use super::{CompletionHelper, Dictionary};
 use crate::candidate::CandidateSuite;
 use crate::entry::Entry;
@@ -20,24 +21,51 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-/// A dictionary that forwards lookups to a running skkserv
-/// (protocol is EUC-JP). Connection failures are silent, matching the
-/// original: the dictionary just returns no candidates.
+/// A dictionary that forwards lookups to a running skkserv. The protocol
+/// is EUC-JP in the original; NablaSKK also speaks to UTF-8 servers
+/// (e.g. yaskkserv2 with `--utf8`). Connection failures are silent,
+/// matching the original: the dictionary just returns no candidates.
 pub struct ProxyDictionary {
     address: String,
+    encoding: Encoding,
     session: RefCell<Option<BufReader<TcpStream>>>,
 }
 
 impl ProxyDictionary {
     /// `location` is "host:port" or "host" (port defaults to 1178).
+    /// The server is assumed to speak EUC-JP.
     pub fn new(location: &str) -> Self {
+        Self::with_encoding(location, Encoding::EucJp)
+    }
+
+    /// Like `new`, with the encoding the server speaks. `Encoding::Auto`
+    /// is treated as EUC-JP (the protocol default).
+    pub fn with_encoding(location: &str, encoding: Encoding) -> Self {
         let address = if location.contains(':') {
             location.to_string()
         } else {
             format!("{location}:1178")
         };
+        let encoding = match encoding {
+            Encoding::Utf8 => Encoding::Utf8,
+            Encoding::EucJp | Encoding::Auto => Encoding::EucJp,
+        };
 
-        Self { address, session: RefCell::new(None) }
+        Self { address, encoding, session: RefCell::new(None) }
+    }
+
+    fn encode(&self, text: &str) -> Vec<u8> {
+        match self.encoding {
+            Encoding::Utf8 => text.as_bytes().to_vec(),
+            _ => jconv::eucj_from_utf8(text),
+        }
+    }
+
+    fn decode(&self, bytes: &[u8]) -> String {
+        match self.encoding {
+            Encoding::Utf8 => String::from_utf8_lossy(bytes).into_owned(),
+            _ => jconv::utf8_from_eucj(bytes),
+        }
     }
 
     fn connect(&self) -> bool {
@@ -70,7 +98,7 @@ impl ProxyDictionary {
 
             let mut response = Vec::new();
             reader.read_until(b'\n', &mut response)?;
-            Ok(jconv::utf8_from_eucj(&response))
+            Ok(self.decode(&response))
         })();
 
         match io {
@@ -87,7 +115,7 @@ impl ProxyDictionary {
 impl Dictionary for ProxyDictionary {
     fn find(&self, entry: &Entry, result: &mut CandidateSuite) {
         let mut request = vec![b'1'];
-        request.extend_from_slice(&jconv::eucj_from_utf8(entry.entry_string()));
+        request.extend_from_slice(&self.encode(entry.entry_string()));
         request.push(b' ');
 
         let Some(response) = self.roundtrip(&request) else { return };
@@ -103,7 +131,7 @@ impl Dictionary for ProxyDictionary {
 
     fn complete(&self, helper: &mut CompletionHelper) {
         let mut request = vec![b'4'];
-        request.extend_from_slice(&jconv::eucj_from_utf8(helper.entry()));
+        request.extend_from_slice(&self.encode(helper.entry()));
         request.push(b' ');
 
         let Some(response) = self.roundtrip(&request) else { return };
@@ -131,6 +159,10 @@ mod tests {
 
     /// Minimal in-process skkserv for the test.
     fn spawn_server() -> String {
+        spawn_server_with(Encoding::EucJp)
+    }
+
+    fn spawn_server_with(encoding: Encoding) -> String {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap().to_string();
 
@@ -148,14 +180,21 @@ mod tests {
                 while stream.read_exact(&mut byte).is_ok() && byte[0] != b' ' {
                     key.push(byte[0]);
                 }
-                let key = jconv::utf8_from_eucj(&key);
+                let key = match encoding {
+                    Encoding::Utf8 => String::from_utf8(key).unwrap(),
+                    _ => jconv::utf8_from_eucj(&key),
+                };
 
                 let reply = match (cmd[0], key.as_str()) {
                     (b'1', "かんじ") => "1/漢字/幹事/\n".to_string(),
                     (b'4', "かん") => "1/かんじ/かんとう/\n".to_string(),
                     _ => format!("4{key}\n"),
                 };
-                stream.write_all(&jconv::eucj_from_utf8(&reply)).unwrap();
+                let bytes = match encoding {
+                    Encoding::Utf8 => reply.into_bytes(),
+                    _ => jconv::eucj_from_utf8(&reply),
+                };
+                stream.write_all(&bytes).unwrap();
             }
         });
 
@@ -175,6 +214,21 @@ mod tests {
         let mut suite = CandidateSuite::new();
         dictionary.find(&Entry::from_entry("みつからない"), &mut suite);
         assert!(suite.is_empty());
+
+        let mut helper = CompletionHelper::new("かん", 0, 0);
+        dictionary.complete(&mut helper);
+        assert_eq!(helper.into_result(), vec!["かんじ", "かんとう"]);
+    }
+
+    #[test]
+    fn utf8_server() {
+        let address = spawn_server_with(Encoding::Utf8);
+        let dictionary = ProxyDictionary::with_encoding(&address, Encoding::Utf8);
+
+        let mut suite = CandidateSuite::new();
+        dictionary.find(&Entry::from_entry("かんじ"), &mut suite);
+        assert_eq!(suite.candidates().len(), 2);
+        assert_eq!(suite.candidates()[0].word(), "漢字");
 
         let mut helper = CompletionHelper::new("かん", 0, 0);
         dictionary.complete(&mut helper);

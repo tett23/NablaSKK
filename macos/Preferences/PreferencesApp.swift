@@ -13,6 +13,8 @@ struct RootView: View {
                 .tabItem { Label("辞書", systemImage: "books.vertical") }
             UserDictionaryView()
                 .tabItem { Label("ユーザー辞書", systemImage: "person.text.rectangle") }
+            SkkservSettingsView()
+                .tabItem { Label("skkserv", systemImage: "network") }
             InputSettingsView()
                 .tabItem { Label("入力", systemImage: "keyboard") }
         }
@@ -220,7 +222,7 @@ struct DictionaryListView: View {
                 Menu {
                     Button("辞書ファイルを選択...") { chooseFiles() }
                     Divider()
-                    ForEach(DictionaryEntry.Kind.allCases) { kind in
+                    ForEach(DictionaryEntry.Kind.addable) { kind in
                         Button(kind.label) { store.add(kind: kind) }
                     }
                 } label: {

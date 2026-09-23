@@ -59,3 +59,65 @@ struct InputSettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
+
+/// skkserv tab, modelled on AquaSKK's dictionary server settings. The
+/// server is queried after every dictionary in dictionaries.conf, so
+/// local dictionaries always win.
+struct SkkservSettingsView: View {
+    @StateObject private var store = InputSettingsStore()
+    @State private var portText = ""
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("skkserv を使う", isOn: $store.settings.skkservEnabled)
+
+                TextField("ホスト", text: $store.settings.skkservHost, prompt: Text("localhost"))
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 320)
+                    .disabled(!store.settings.skkservEnabled)
+
+                HStack {
+                    TextField("ポート", text: $portText, prompt: Text("1178"))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+                        .disabled(!store.settings.skkservEnabled)
+                        .onChange(of: portText) { text in
+                            if let port = Int(text), (1...65535).contains(port) {
+                                store.settings.skkservPort = port
+                            }
+                        }
+                    if Int(portText).map({ (1...65535).contains($0) }) != true {
+                        Text("1〜65535 の数字を入力してください").font(.caption).foregroundColor(.red)
+                    }
+                }
+
+                Picker("文字コード", selection: $store.settings.skkservEncoding) {
+                    ForEach(InputSettings.SkkservEncoding.allCases) { encoding in
+                        Text(encoding.label).tag(encoding)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+                .disabled(!store.settings.skkservEnabled)
+            } header: {
+                Text("skkserv").font(.headline)
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("「辞書」タブの辞書をすべて検索したあとで skkserv に問い合わせます"
+                         + "(ローカルの辞書が優先されます)。")
+                    Text("従来の skkserv は EUC-JP です。yaskkserv2 などを UTF-8 で動かしている場合は UTF-8 を選んでください。"
+                         + " 設定は次にどこかのアプリで入力を始めたときに反映されます。")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+
+            if let error = store.saveError {
+                Text("保存できません: \(error)").foregroundColor(.red).font(.callout)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear { portText = String(store.settings.skkservPort) }
+    }
+}

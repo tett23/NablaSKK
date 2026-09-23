@@ -48,7 +48,9 @@ enum {
 SkkSession *skk_session_new(const char *user_dictionary_path);
 void skk_session_free(SkkSession *session);
 
-/* Add a system dictionary. Returns 0 on success. */
+/* Add a system dictionary. dictionary_type: 0=SKK-JISYO (encoding
+ * auto-detected), 1=auto-update, 2=skkserv (EUC-JP), 4=gadget,
+ * 5=SKK-JISYO (UTF-8), 6=skkserv (UTF-8). Returns 0 on success. */
 int32_t skk_session_add_dictionary(SkkSession *session, int32_t dictionary_type,
                                    const char *location);
 

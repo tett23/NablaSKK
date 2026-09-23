@@ -12,6 +12,7 @@
 //! Dictionary construction by type (port of `SKKDictionaryFactory` /
 //! `SKKDictionaryKey`). Types keep the original DictionarySet.plist
 //! numbering; `Kotoeri` was macOS-specific and maps to a null dictionary.
+//! Type 6 (skkserv speaking UTF-8) is a NablaSKK addition.
 
 use super::file::Encoding;
 use super::{
@@ -35,6 +36,8 @@ pub enum DictionaryType {
     Gadget = 4,
     /// SKK 辞書 (UTF-8)
     CommonUtf8 = 5,
+    /// skkserv 辞書 (UTF-8; NablaSKK 独自)
+    ProxyUtf8 = 6,
 }
 
 impl DictionaryType {
@@ -46,6 +49,7 @@ impl DictionaryType {
             3 => Self::Kotoeri,
             4 => Self::Gadget,
             5 => Self::CommonUtf8,
+            6 => Self::ProxyUtf8,
             _ => return None,
         })
     }
@@ -103,6 +107,7 @@ pub fn create(key: &DictionaryKey) -> Box<dyn Dictionary + Send> {
             }
         },
         DictionaryType::Proxy => Box::new(ProxyDictionary::new(location)),
+        DictionaryType::ProxyUtf8 => Box::new(ProxyDictionary::with_encoding(location, Encoding::Utf8)),
         DictionaryType::Gadget => Box::new(GadgetDictionary::new()),
         DictionaryType::Kotoeri => {
             eprintln!("dictionary::create: Kotoeri dictionaries are not supported");

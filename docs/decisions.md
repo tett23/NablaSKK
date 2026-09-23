@@ -95,6 +95,15 @@
   ドロップし直す用途を優先。当初は `-1` の連番で並存させていた)し、同じ
   パスを指すエントリが既にあれば再有効化するだけで二重登録しない。
   変更は即保存し、IME は `activateServer` 時に mtime で再読み込み。
+- skkserv は本家では辞書リストの 1 タイプ(2、EUC-JP 固定)だが、設定アプリに
+  専用の「skkserv」タブ(有効/ホスト/ポート/文字コードのラジオ)を置いた。
+  値は `settings.conf`(`skkserv=on|off`, `skkserv_host`, `skkserv_port`,
+  `skkserv_encoding=euc-jp|utf-8`)に保存し、IME は dictionaries.conf の
+  全エントリを追加した**あと**に proxy 辞書を追加する(ローカル辞書優先)。
+  UTF-8 サーバー(yaskkserv2 の `--utf8` など)向けに辞書タイプ 6
+  (skkserv UTF-8)を NablaSKK 独自に追加。`ProxyDictionary::with_encoding`
+  で要求・応答の変換を切り替える。辞書リストの「+」からは skkserv タイプを
+  外した(手書きの 2/6 行は従来どおり表示・編集できる)。
 - 句読点の切り替えは本家と同じく kana-rule のサブルール(`data/comma.rule`,
   `data/period.rule` の中身を Swift 側に埋め込み)で実現。エンジンには
   `reset_kana_rules` / `patch_kana_rules` の FFI を追加し、IME は

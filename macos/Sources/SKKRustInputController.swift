@@ -31,10 +31,14 @@ enum Engine {
 
     private static var loadedSettingsDate: Date?
 
-    /// Apply settings.conf (punctuation sub-rules) when it changed on disk.
+    /// Apply settings.conf (punctuation sub-rules, skkserv) when it
+    /// changed on disk. The skkserv entry lives in the dictionary list,
+    /// so the dictionaries are rebuilt too.
     static func reloadInputSettingsIfChanged() {
         guard InputSettings.modificationDate != loadedSettingsDate else { return }
         applyInputSettings(to: session)
+        session.clearDictionaries()
+        loadDictionaries(into: session)
     }
 
     private static func applyInputSettings(to session: SKKSession) {
@@ -58,12 +62,20 @@ enum Engine {
         loadDictionaries(into: session)
     }
 
+    /// dictionaries.conf in order, then the skkserv from settings.conf
+    /// (if enabled) so local dictionaries are always consulted first.
     private static func loadDictionaries(into session: SKKSession) {
         loadedConfigDate = DictionaryConfig.modificationDate
 
         for entry in DictionaryConfig.load() where entry.enabled {
             guard let type = SKKSession.DictionaryType(rawValue: entry.kind.rawValue) else { continue }
             session.addDictionary(type, location: entry.location)
+        }
+
+        let settings = InputSettings.load()
+        if settings.skkservIsConfigured,
+           let type = SKKSession.DictionaryType(rawValue: settings.skkservEncoding.dictionaryKind.rawValue) {
+            session.addDictionary(type, location: settings.skkservLocation)
         }
 
         loadedConfigDate = DictionaryConfig.modificationDate
