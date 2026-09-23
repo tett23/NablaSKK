@@ -17,6 +17,8 @@ struct RootView: View {
                 .tabItem { Label("skkserv", systemImage: "network") }
             InputSettingsView()
                 .tabItem { Label("入力", systemImage: "keyboard") }
+            KeymapSettingsView()
+                .tabItem { Label("キー", systemImage: "command") }
         }
         .padding(.top, 4)
         .frame(minWidth: 720, minHeight: 440)

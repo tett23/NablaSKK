@@ -79,6 +79,17 @@ public final class SKKSession {
         rules.withCString { skk_session_patch_kana_rules(session, $0) }
     }
 
+    /// Restore the built-in keymap, dropping applied overrides.
+    public func resetKeymap() {
+        skk_session_reset_keymap(session)
+    }
+
+    /// Rebind keys from keymap.conf-format text; each line replaces every
+    /// key currently bound to its symbol.
+    public func overrideKeymap(_ text: String) {
+        text.withCString { skk_session_override_keymap(session, $0) }
+    }
+
     /// Remove every system dictionary (the user dictionary is kept).
     public func clearDictionaries() {
         skk_session_clear_dictionaries(session)

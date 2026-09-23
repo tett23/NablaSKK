@@ -59,6 +59,12 @@ void skk_session_reset_kana_rules(SkkSession *session);
 /* Merge kana-rule text (UTF-8, kana-rule.conf format) into the rules. */
 void skk_session_patch_kana_rules(SkkSession *session, const char *rules);
 
+/* Restore the built-in keymap, dropping applied overrides. */
+void skk_session_reset_keymap(SkkSession *session);
+/* Rebind keys from keymap.conf-format text; each line replaces every key
+ * currently bound to its symbol. */
+void skk_session_override_keymap(SkkSession *session, const char *text);
+
 /* Remove every system dictionary (the user dictionary is kept). */
 void skk_session_clear_dictionaries(SkkSession *session);
 

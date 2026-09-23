@@ -254,3 +254,51 @@ if failures > 0 {
     exit(1)
 }
 print("PASS all key translation tests")
+// Key bindings: defaults match data/keymap.conf, syntax check, round trip, engine override
+do {
+    let builtin = try! String(contentsOfFile: "data/keymap.conf", encoding: .utf8)
+    var defaults: [String: String] = [:]
+    for line in builtin.split(separator: "\n") {
+        let fields = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
+        if fields.count == 2, !fields[0].hasPrefix("#") { defaults[String(fields[0])] = String(fields[1]) }
+    }
+    for action in KeymapSettings.actions {
+        check(defaults[action.symbol] == action.defaultKeys, "keymap: default for \(action.symbol) matches data/keymap.conf")
+    }
+
+    for good in ["ctrl::j", "group::hex::0x03,0x0a,0x0d||ctrl::m", "keycode::7b", "alt::hex::0x20||shift::hex::0x20",
+                 "group::A-K,M-P,R-Z", "/", "ctrl::/"] {
+        check(KeymapSettings.isValid(good), "keymap: valid spec \(good)")
+    }
+    for bad in ["", "ctrl::", "ctrl j", "hex::0xzz", "ab", "ctrl::||q", "hex::0x123"] {
+        check(!KeymapSettings.isValid(bad), "keymap: invalid spec \(bad)")
+    }
+
+    let jmode = KeymapSettings.actions[0]
+    var settings = KeymapSettings()
+    settings.set("ctrl::k", for: jmode)
+    settings.set(" ctrl::j ", for: KeymapSettings.actions[0])
+    check(settings.overrides.isEmpty, "keymap: setting the default clears the override")
+    settings.set("ctrl::k", for: jmode)
+    settings.set("bad spec", for: KeymapSettings.actions[1])
+    check(settings.overrideText == "SKK_JMODE\tctrl::k", "keymap: invalid overrides are not sent to the engine")
+    check(KeymapSettings.parse(settings.serialize()) == settings, "keymap: serialize/parse round trip")
+    check(KeymapSettings.parse("Unknown q\n# SKK_JMODE ctrl::x\nSKK_JMODE ctrl::k\n").overrides == ["SKK_JMODE": "ctrl::k"],
+          "keymap: unknown symbols and comments are ignored")
+
+    // End to end: Ctrl-K enters kana mode after the override, Ctrl-J no longer does
+    let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-keymap-test")
+    session.overrideKeymap(settings.overrideText)
+    session.handle(charcode: UInt8(ascii: "l"))
+    check(session.inputMode == .ascii, "keymap: ascii mode before override test")
+    session.handle(charcode: UInt8(ascii: "j"), mods: [.ctrl])
+    check(session.inputMode == .ascii, "keymap: Ctrl-J no longer switches to kana")
+    session.handle(charcode: UInt8(ascii: "k"), mods: [.ctrl])
+    check(session.inputMode == .hirakana, "keymap: Ctrl-K switches to kana after override")
+    session.resetKeymap()
+    session.handle(charcode: UInt8(ascii: "l"))
+    session.handle(charcode: UInt8(ascii: "j"), mods: [.ctrl])
+    check(session.inputMode == .hirakana, "keymap: reset restores Ctrl-J")
+    _ = session.takeFixed()
+}
+

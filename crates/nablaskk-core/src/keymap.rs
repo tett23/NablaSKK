@@ -175,6 +175,30 @@ impl Keymap {
 
     /// Merge keymap definitions from config text.
     pub fn load(&mut self, text: &str) {
+        self.apply(text, false);
+    }
+
+    /// Like [`load`](Self::load), but each line first drops every key
+    /// currently bound to its symbol, so `SKK_JMODE ctrl::k` rebinds the
+    /// event instead of adding a second key for it. Used for the
+    /// preferences app's per-action overrides (NablaSKK addition).
+    pub fn load_replacing(&mut self, text: &str) {
+        self.apply(text, true);
+    }
+
+    fn unbind(&mut self, symbol: Symbol) {
+        match symbol {
+            Symbol::Event(id) => self.events.retain(|_, bound| *bound != id),
+            Symbol::Attribute(bits) => {
+                for attr in self.attributes.values_mut() {
+                    *attr &= !bits;
+                }
+            }
+            Symbol::HandleOption(option) => self.options.retain(|_, bound| *bound != option),
+        }
+    }
+
+    fn apply(&mut self, text: &str, replace: bool) {
         for line in text.lines() {
             let mut tokens = line.split_whitespace();
             let (Some(key), Some(value)) = (tokens.next(), tokens.next()) else { continue };
@@ -187,6 +211,10 @@ impl Keymap {
                 eprintln!("Keymap: invalid key name [{key}]");
                 continue;
             };
+
+            if replace && !entry.not {
+                self.unbind(entry.symbol);
+            }
 
             for state in entry.keys {
                 match entry.symbol {
@@ -316,5 +344,21 @@ mod tests {
             keymap.fetch(b'"', 0, 0),
             Event::new(EventId::Char, b'"', UPPER_CASES | INPUT_CHARS)
         );
+    }
+
+    #[test]
+    fn load_replacing_rebinds() {
+        let mut keymap = keymap();
+        keymap.load_replacing("SKK_JMODE\tctrl::k\nToggleKana\tctrl::t||@\n");
+
+        // the old keys are gone ...
+        assert_eq!(keymap.fetch(b'j', 0, CTRL), Event::new(EventId::Char, b'j', 0));
+        assert_eq!(keymap.fetch(b'q', 0, 0), Event::new(EventId::Char, b'q', INPUT_CHARS));
+        // ... and the new ones work
+        assert_eq!(keymap.fetch(b'k', 0, CTRL), Event::new(EventId::JMode, b'k', 0));
+        assert_eq!(keymap.fetch(b't', 0, CTRL), Event::new(EventId::Char, b't', TOGGLE_KANA));
+        assert_eq!(keymap.fetch(b'@', 0, 0), Event::new(EventId::Char, b'@', TOGGLE_KANA | INPUT_CHARS));
+        // other bindings are untouched
+        assert_eq!(keymap.fetch(b'g', 0, CTRL), Event::new(EventId::Cancel, b'g', 0));
     }
 }

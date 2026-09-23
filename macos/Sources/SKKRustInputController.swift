@@ -25,9 +25,27 @@ enum Engine {
 
         loadDictionaries(into: session)
         applyInputSettings(to: session)
+        applyKeymap(to: session)
 
         return session
     }()
+
+    private static var loadedKeymapDate: Date?
+
+    /// Apply keymap.conf overrides when the file changed on disk.
+    static func reloadKeymapIfChanged() {
+        guard KeymapSettings.modificationDate != loadedKeymapDate else { return }
+        applyKeymap(to: session)
+    }
+
+    private static func applyKeymap(to session: SKKSession) {
+        loadedKeymapDate = KeymapSettings.modificationDate
+        session.resetKeymap()
+        let overrides = KeymapSettings.load().overrideText
+        if !overrides.isEmpty {
+            session.overrideKeymap(overrides)
+        }
+    }
 
     private static var loadedSettingsDate: Date?
 
@@ -122,6 +140,7 @@ public class SKKRustInputController: IMKInputController {
 
         if Self.activeController !== self {
             // Another client had pending composition; drop it
+        Engine.reloadKeymapIfChanged()
             Engine.session.clear()
             _ = Engine.session.takeFixed()
             Self.activeController = self
