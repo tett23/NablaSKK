@@ -61,11 +61,15 @@ enum Engine {
 
     private static func applyInputSettings(to session: SKKSession) {
         loadedSettingsDate = InputSettings.modificationDate
+        let settings = InputSettings.load()
+
         session.resetKanaRules()
-        let patch = InputSettings.load().kanaRulePatch
-        if !patch.isEmpty {
-            session.patchKanaRules(patch)
+        if !settings.kanaRulePatch.isEmpty {
+            session.patchKanaRules(settings.kanaRulePatch)
         }
+        session.setOption(.enableDynamicCompletion, settings.suggestEnabled ? 1 : 0)
+        session.setOption(.dynamicCompletionRange, Int32(settings.suggestCount))
+        session.setOption(.enableExtendedCompletion, settings.completionExtended ? 1 : 0)
     }
 
     private static var loadedConfigDate: Date?
@@ -136,6 +140,7 @@ public class SKKRustInputController: IMKInputController {
     public override func activateServer(_ sender: Any!) {
         Engine.reloadDictionariesIfChanged()
         Engine.reloadInputSettingsIfChanged()
+        Engine.reloadKeymapIfChanged()
         Engine.session.reloadUserDictionaryIfChanged()
 
         if Self.activeController !== self {
@@ -157,6 +162,7 @@ public class SKKRustInputController: IMKInputController {
             insert(fixed, to: client)
         }
         setMarkedText("", to: client)
+        CompletionWindow.shared.hide()
         Engine.session.save()
     }
 
@@ -293,6 +299,17 @@ public class SKKRustInputController: IMKInputController {
         }
 
         setMarkedText(marked, caret: caret, to: client)
+
+        // Suggestions float under the caret once the marked text is placed
+        // (so the client reports the right rectangle)
+        if Engine.session.completionVisible {
+            CompletionWindow.shared.show(
+                completions: Engine.session.completions,
+                prefixLength: Engine.session.completionPrefixLength,
+                client: client)
+        } else {
+            CompletionWindow.shared.hide()
+        }
 
         return !fixed.isEmpty || !marked.isEmpty
     }

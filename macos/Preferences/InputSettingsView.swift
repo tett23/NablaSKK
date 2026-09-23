@@ -45,6 +45,34 @@ struct InputSettingsView: View {
                 }
             } header: {
                 Text("句読点").font(.headline)
+            }
+
+            Section {
+                Toggle(isOn: $store.settings.suggestEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("入力中にサジェストを表示する")
+                        Text("▽で読みを入力している間、その読みで始まる辞書の見出し語をカーソルの下に一覧します。TAB で補完できます。")
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                }
+                Stepper(value: $store.settings.suggestCount, in: InputSettings.suggestCountRange) {
+                    HStack {
+                        Text("表示する件数")
+                        Text("\(store.settings.suggestCount)")
+                            .monospacedDigit()
+                            .frame(minWidth: 24, alignment: .trailing)
+                    }
+                }
+                .disabled(!store.settings.suggestEnabled)
+                Toggle(isOn: $store.settings.completionExtended) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("補完にシステム辞書も使う")
+                        Text("オフのときはユーザー辞書(自分が変換した読み)だけから補完・サジェストします。TAB 補完にも効きます。")
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                }
+            } header: {
+                Text("サジェスト").font(.headline)
             } footer: {
                 Text("設定は次にどこかのアプリで入力を始めたときに反映されます。")
                     .font(.caption)

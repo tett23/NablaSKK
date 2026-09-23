@@ -22,11 +22,13 @@ SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Shared/KeymapConfig.swift \
     macos/Sources/KeyTranslator.swift \
     macos/Sources/ClientQuirks.swift \
+    macos/Sources/CompletionWindow.swift \
     macos/Sources/SKKRustInputController.swift \
     macos/Sources/main.swift"
 PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
     macos/Shared/UserDictionaryModel.swift \
     macos/Shared/InputSettings.swift \
+    macos/Shared/KeymapConfig.swift \
     macos/Preferences/PreferencesApp.swift \
     macos/Shared/KeymapConfig.swift \
     macos/Preferences/UserDictionaryView.swift \

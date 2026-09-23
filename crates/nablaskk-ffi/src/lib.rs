@@ -7,7 +7,7 @@
 //! released with `skk_string_free`.
 
 use nablaskk_core::backend::Backend;
-use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, Clipboard, NullWidgets};
+use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, Clipboard, DynamicCompletor, NullWidgets};
 use nablaskk_core::candidate::Candidate;
 use nablaskk_core::config::Config;
 use nablaskk_core::dictionary::{self, DictionaryKey, DictionaryType, Encoding, LocalUserDictionary};
@@ -52,6 +52,40 @@ impl CandidateWindow for SharedWindow {
     }
 }
 
+/// Dynamic completion ("suggest") state mirrored for the host UI.
+#[derive(Debug, Clone, Default)]
+struct CompletionState {
+    visible: bool,
+    completions: Vec<String>,
+    /// Characters shared by every completion (the typed reading).
+    common_prefix_length: usize,
+}
+
+struct SharedCompletor(Rc<RefCell<CompletionState>>);
+
+impl DynamicCompletor for SharedCompletor {
+    fn update(&mut self, completions: &str, common_prefix_length: usize, _mark: usize) {
+        let mut state = self.0.borrow_mut();
+        state.completions = if completions.is_empty() {
+            Vec::new()
+        } else {
+            completions.split('\n').map(str::to_string).collect()
+        };
+        state.common_prefix_length = common_prefix_length;
+    }
+
+    fn show(&mut self) {
+        let mut state = self.0.borrow_mut();
+        state.visible = !state.completions.is_empty();
+    }
+
+    fn hide(&mut self) {
+        let mut state = self.0.borrow_mut();
+        state.visible = false;
+        state.completions.clear();
+    }
+}
+
 /// Clipboard contents supplied by the host (the engine cannot reach the
 /// system pasteboard itself).
 struct SharedClipboard(Rc<RefCell<String>>);
@@ -67,6 +101,7 @@ pub struct SkkSession {
     keymap: Keymap,
     frontend: Rc<RefCell<BufferedFrontEnd>>,
     window: Rc<RefCell<WindowState>>,
+    completion: Rc<RefCell<CompletionState>>,
     clipboard: Rc<RefCell<String>>,
 }
 
@@ -101,6 +136,7 @@ pub extern "C" fn skk_session_new(user_dictionary_path: *const c_char) -> *mut S
 
     let frontend = Rc::new(RefCell::new(BufferedFrontEnd::default()));
     let window = Rc::new(RefCell::new(WindowState::default()));
+    let completion = Rc::new(RefCell::new(CompletionState::default()));
     let clipboard = Rc::new(RefCell::new(String::new()));
 
     let session = Session::new(SessionParameter {
@@ -112,10 +148,10 @@ pub extern "C" fn skk_session_new(user_dictionary_path: *const c_char) -> *mut S
         messenger: Box::new(NullWidgets),
         clipboard: Box::new(SharedClipboard(clipboard.clone())),
         annotator: Box::new(NullWidgets),
-        completor: Box::new(NullWidgets),
+        completor: Box::new(SharedCompletor(completion.clone())),
     });
 
-    Box::into_raw(Box::new(SkkSession { session, keymap, frontend, window, clipboard }))
+    Box::into_raw(Box::new(SkkSession { session, keymap, frontend, window, completion, clipboard }))
 }
 
 /// # Safety
@@ -176,6 +212,34 @@ pub unsafe extern "C" fn skk_session_patch_kana_rules(session: *mut SkkSession, 
     let Some(rules) = cstr(rules) else { return };
 
     session.session.converter_mut().load(rules);
+}
+
+/// Restore the built-in keymap (keymap.conf), dropping any overrides
+/// applied with `skk_session_override_keymap`.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_reset_keymap(session: *mut SkkSession) {
+    let Some(session) = session.as_mut() else { return };
+
+    let mut keymap = Keymap::new();
+    keymap.load(include_str!("../../../data/keymap.conf"));
+    session.keymap = keymap;
+}
+
+/// Rebind keys from keymap.conf-format text: each line replaces every
+/// key currently bound to its symbol (e.g. `SKK_JMODE ctrl::k` makes
+/// Ctrl-K the only kana-mode key). Used by the preferences app.
+///
+/// # Safety
+/// `session` must be a valid session pointer; `text` a valid C string.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_override_keymap(session: *mut SkkSession, text: *const c_char) {
+    let Some(session) = session.as_mut() else { return };
+    let Some(text) = cstr(text) else { return };
+
+    session.keymap.load_replacing(text);
 }
 
 /// Remove every system dictionary added with `skk_session_add_dictionary`
@@ -408,6 +472,56 @@ pub unsafe extern "C" fn skk_session_candidate_page(session: *const SkkSession) 
     ((state.page as i32) << 16) | (state.page_count as i32 & 0xffff)
 }
 
+/// True while dynamic completions ("suggest") should be shown: the
+/// option is on, a reading is being typed and the dictionaries hold
+/// entries that extend it.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_completion_visible(session: *const SkkSession) -> i32 {
+    let Some(session) = session.as_ref() else { return 0 };
+    session.completion.borrow().visible as i32
+}
+
+/// Number of dynamic completions currently offered.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_completion_count(session: *const SkkSession) -> i32 {
+    let Some(session) = session.as_ref() else { return 0 };
+    session.completion.borrow().completions.len() as i32
+}
+
+/// Dynamic completion at `index` (caller frees), or NULL.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_completion(
+    session: *const SkkSession,
+    index: i32,
+) -> *mut c_char {
+    let Some(session) = session.as_ref() else { return std::ptr::null_mut() };
+
+    match session.completion.borrow().completions.get(index as usize) {
+        Some(completion) => into_cstring(completion.clone()),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Number of leading characters every completion shares (the part
+/// already typed), for highlighting the rest.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_completion_prefix_length(session: *const SkkSession) -> i32 {
+    let Some(session) = session.as_ref() else { return 0 };
+    session.completion.borrow().common_prefix_length as i32
+}
+
 /// Boolean engine options for skk_session_set_option.
 pub const SKK_OPTION_SUPPRESS_NEWLINE_ON_COMMIT: i32 = 0;
 pub const SKK_OPTION_INLINE_BACKSPACE_IMPLIES_COMMIT: i32 = 1;
@@ -417,6 +531,13 @@ pub const SKK_OPTION_FIX_INTERMEDIATE_CONVERSION: i32 = 4;
 pub const SKK_OPTION_DISPLAY_SHORTEST_MATCH: i32 = 5;
 pub const SKK_OPTION_USE_NUMERIC_CONVERSION: i32 = 6;
 pub const SKK_OPTION_MAX_INLINE_CANDIDATES: i32 = 7;
+/// Show dictionary entries that extend the reading while it is typed.
+pub const SKK_OPTION_ENABLE_DYNAMIC_COMPLETION: i32 = 8;
+/// How many completions to offer (AquaSKK's dynamic_completion_range).
+pub const SKK_OPTION_DYNAMIC_COMPLETION_RANGE: i32 = 9;
+/// Complete (TAB and suggest) from every dictionary, not only the user's
+/// (AquaSKK's enable_extended_completion; its shipped default is on).
+pub const SKK_OPTION_ENABLE_EXTENDED_COMPLETION: i32 = 10;
 
 /// Set an engine option. Returns 0 on success.
 ///
@@ -455,6 +576,15 @@ pub unsafe extern "C" fn skk_session_set_option(
         }
         SKK_OPTION_MAX_INLINE_CANDIDATES => {
             session.session.config_mut().max_count_of_inline_candidates = value.max(0) as usize;
+        }
+        SKK_OPTION_ENABLE_DYNAMIC_COMPLETION => {
+            session.session.config_mut().enable_dynamic_completion = flag;
+        }
+        SKK_OPTION_DYNAMIC_COMPLETION_RANGE => {
+            session.session.config_mut().dynamic_completion_range = value.max(0) as usize;
+        }
+        SKK_OPTION_ENABLE_EXTENDED_COMPLETION => {
+            session.session.backend_mut().enable_extended_completion(flag);
         }
         _ => return -1,
     }

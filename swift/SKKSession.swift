@@ -149,6 +149,23 @@ public final class SKKSession {
         return (Int(packed >> 16), Int(packed & 0xffff))
     }
 
+    /// True while dynamic completions ("suggest") should be shown.
+    public var completionVisible: Bool {
+        skk_session_completion_visible(session) == 1
+    }
+
+    /// Dictionary entries that extend the reading being typed.
+    public var completions: [String] {
+        (0..<skk_session_completion_count(session)).map { index in
+            takeString(skk_session_completion(session, index))
+        }
+    }
+
+    /// Leading characters shared by every completion (the typed part).
+    public var completionPrefixLength: Int {
+        Int(skk_session_completion_prefix_length(session))
+    }
+
     public enum Option: Int32 {
         case suppressNewlineOnCommit = 0
         case inlineBackspaceImpliesCommit = 1
@@ -158,6 +175,9 @@ public final class SKKSession {
         case displayShortestMatch = 5
         case useNumericConversion = 6
         case maxInlineCandidates = 7
+        case enableDynamicCompletion = 8
+        case dynamicCompletionRange = 9
+        case enableExtendedCompletion = 10
     }
 
     /// Set an engine option (booleans take 0/1).

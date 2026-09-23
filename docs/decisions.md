@@ -104,6 +104,30 @@
   (skkserv UTF-8)を NablaSKK 独自に追加。`ProxyDictionary::with_encoding`
   で要求・応答の変換を切り替える。辞書リストの「+」からは skkserv タイプを
   外した(手書きの 2/6 行は従来どおり表示・編集できる)。
+- サジェスト(本家の動的補完 `enable_dynamic_completion`)を実装。エンジンは
+  既に `DynamicCompletor` を呼んでいたので FFI に `SharedCompletor` を足して
+  補完一覧・共通接頭辞長を公開し(`skk_session_completion_*`)、IME 側の
+  `CompletionWindow.swift` が本家 `CompletionWindow`/`CompletionView`/
+  `MacDynamicCompletor` の見た目(淡色の箱、未入力部分を太字、"TAB で補完" の
+  板)でキャレット下に出す。オプションは `settings.conf` の `suggest=on|off`
+  (既定 off、本家と同じ)、`suggest_count`(既定 5。本家の
+  `dynamic_completion_range` 既定 1 は 1 件しか出ず一覧の意味がないので変えた)、
+  `completion_extended=on|off`(本家 `enable_extended_completion`、既定 on は
+  本家 plist と同じ。Rust `Backend` の既定は false のままで、IME が起動時に
+  オプションで on にする。受け入れテストが user 辞書のみの補完を前提に
+  しているため Backend 側は変えない)。
+- キーバインドは本家では手書きの keymap.conf パッチのみだが、設定アプリに
+  「キー」タブを置いた。行ごとに keymap.conf 構文でキーを書き、差分だけを
+  `~/Library/Application Support/NablaSKK/keymap.conf` に保存する。エンジン側は
+  `Keymap::load_replacing`(NablaSKK 独自)を追加し、1 行ごとに「そのシンボルに
+  束縛されたキーを全部外してから登録」する。本家の `load` はマージのみなので
+  `SKK_JMODE ctrl::k` と書いても ctrl::j が残ってしまうため。FFI は
+  `skk_session_reset_keymap` / `skk_session_override_keymap`。IME は mtime を
+  見て「組み込み keymap に戻す → 上書き行を適用」。SKK_PASTE は IME 側が
+  エンジンより先にキーを判定している(クリップボード受け渡し)ため対象外。
+  UpperCases / Direct / InputChars / AlwaysHandled / PseudoHandled も GUI から
+  は触らせない(手書きの keymap.conf 行としては解釈しないので、必要なら
+  data/keymap.conf を直接変える)。
 - 句読点の切り替えは本家と同じく kana-rule のサブルール(`data/comma.rule`,
   `data/period.rule` の中身を Swift 側に埋め込み)で実現。エンジンには
   `reset_kana_rules` / `patch_kana_rules` の FFI を追加し、IME は

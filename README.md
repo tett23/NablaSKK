@@ -54,6 +54,13 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    4=Gadget(today/now/=式)、5=SKK-JISYO(UTF-8 固定)、
    6=skkserv(host:port、UTF-8)。行頭の `-` は無効化した辞書です。
 
+サジェスト(読みを入力中に、その読みで始まる辞書の見出し語をカーソル下に
+一覧、TAB で補完)は「入力」タブでオン/オフ、件数、システム辞書も使うかを
+設定できます(既定はオフ)。
+
+キーバインドは設定アプリの「キー」タブで操作ごとに変更できます
+(keymap.conf 構文、差分のみ `keymap.conf` に保存。空にするとデフォルト)。
+
 skkserv は設定アプリの「skkserv」タブでホスト・ポート・文字コード
 (EUC-JP / UTF-8)を設定できます(`settings.conf` に保存)。ここで設定した
 サーバーはローカルの辞書をすべて検索したあとに問い合わせます。

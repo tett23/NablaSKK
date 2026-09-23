@@ -222,6 +222,48 @@ do {
     check(InputSettings.parse(both.serialize()) == both, "settings: serialize/parse round trip")
     check(both.kanaRulePatch == InputSettings.commaRule + InputSettings.periodRule, "settings: both patches")
 
+    // suggest (dynamic completion) block
+    let sg = InputSettings()
+    check(!sg.suggestEnabled && sg.suggestCount == 5 && sg.completionExtended, "settings: suggest defaults (off, 5, all dictionaries)")
+    let sgParsed = InputSettings.parse("suggest=on\nsuggest_count=3\ncompletion_extended=off\n")
+    check(sgParsed.suggestEnabled && sgParsed.suggestCount == 3 && !sgParsed.completionExtended, "settings: suggest parsed")
+    check(InputSettings.parse(sgParsed.serialize()) == sgParsed, "settings: suggest round trip")
+    check(InputSettings.parse("suggest_count=0\n").suggestCount == 1 && InputSettings.parse("suggest_count=99\n").suggestCount == 20,
+          "settings: suggest count clamped")
+
+    // End to end: typing ▽かん lists readings from the dictionary, the
+    // typed part being the common prefix; off by default
+    let suggestDict = NSTemporaryDirectory() + "nablaskk-suggest-dict"
+    try! ";; okuri-ari entries.\n;; okuri-nasi entries.\nかんじ /漢字/\nかんとう /関東/\nかんさい /関西/\nきた /北/\n"
+        .write(toFile: suggestDict, atomically: true, encoding: .utf8)
+    let suggestSession = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-suggest-user")
+    suggestSession.addDictionary(.commonUTF8, location: suggestDict)
+    for c in "Kan".utf8 { suggestSession.handle(charcode: c) }
+    check(!suggestSession.completionVisible, "suggest: hidden while the option is off")
+    suggestSession.clear()
+    suggestSession.setOption(.enableDynamicCompletion, 1)
+    suggestSession.setOption(.dynamicCompletionRange, 2)
+    for c in "Kan".utf8 { suggestSession.handle(charcode: c) }
+    check(!suggestSession.completionVisible, "suggest: user dictionary only (engine default) finds nothing")
+    suggestSession.clear()
+    suggestSession.setOption(.enableExtendedCompletion, 1)
+    for c in "Kan".utf8 { suggestSession.handle(charcode: c) }
+    check(suggestSession.completionVisible && suggestSession.completions.count == 2
+          && Set(suggestSession.completions).isSubset(of: ["かんじ", "かんとう", "かんさい"])
+          && suggestSession.completionPrefixLength == 2,
+          "suggest: two readings starting with かん, prefix length 2")
+    suggestSession.setOption(.dynamicCompletionRange, 10)
+    for c in "ni".utf8 { suggestSession.handle(charcode: c) }
+    check(!suggestSession.completionVisible, "suggest: nothing matches かんに")
+    suggestSession.handle(charcode: 0x08)
+    check(suggestSession.completions.count == 3, "suggest: range 10 lists all three after backspace")
+    suggestSession.handle(charcode: 0x09)  // TAB completes to the first
+    check(suggestSession.composing.hasPrefix("▽かん") && suggestSession.composing.count > 3, "suggest: TAB completes the reading")
+    suggestSession.clear()
+    check(!suggestSession.completionVisible, "suggest: hidden after clear")
+    _ = suggestSession.takeFixed()
+    try? FileManager.default.removeItem(atPath: suggestDict)
+
     // skkserv block: defaults, parse, round trip, validation
     let defaults = InputSettings()
     check(!defaults.skkservEnabled && defaults.skkservHost == "localhost" && defaults.skkservPort == 1178
@@ -247,6 +289,54 @@ do {
     session.resetKanaRules()
     for c in ",.".utf8 { session.handle(charcode: c) }
     check(session.takeFixed() == "、。", "settings: reset restores default punctuation")
+}
+
+// Key bindings: defaults match data/keymap.conf, syntax check, round trip, engine override
+do {
+    let builtin = try! String(contentsOfFile: "data/keymap.conf", encoding: .utf8)
+    var defaults: [String: String] = [:]
+    for line in builtin.split(separator: "\n") {
+        let fields = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
+        if fields.count == 2, !fields[0].hasPrefix("#") { defaults[String(fields[0])] = String(fields[1]) }
+    }
+    for action in KeymapSettings.actions {
+        check(defaults[action.symbol] == action.defaultKeys, "keymap: default for \(action.symbol) matches data/keymap.conf")
+    }
+
+    for good in ["ctrl::j", "group::hex::0x03,0x0a,0x0d||ctrl::m", "keycode::7b", "alt::hex::0x20||shift::hex::0x20",
+                 "group::A-K,M-P,R-Z", "/", "ctrl::/"] {
+        check(KeymapSettings.isValid(good), "keymap: valid spec \(good)")
+    }
+    for bad in ["", "ctrl::", "ctrl j", "hex::0xzz", "ab", "ctrl::||q", "hex::0x123"] {
+        check(!KeymapSettings.isValid(bad), "keymap: invalid spec \(bad)")
+    }
+
+    let jmode = KeymapSettings.actions[0]
+    var settings = KeymapSettings()
+    settings.set("ctrl::k", for: jmode)
+    settings.set(" ctrl::j ", for: KeymapSettings.actions[0])
+    check(settings.overrides.isEmpty, "keymap: setting the default clears the override")
+    settings.set("ctrl::k", for: jmode)
+    settings.set("bad spec", for: KeymapSettings.actions[1])
+    check(settings.overrideText == "SKK_JMODE\tctrl::k", "keymap: invalid overrides are not sent to the engine")
+    check(KeymapSettings.parse(settings.serialize()) == settings, "keymap: serialize/parse round trip")
+    check(KeymapSettings.parse("Unknown q\n# SKK_JMODE ctrl::x\nSKK_JMODE ctrl::k\n").overrides == ["SKK_JMODE": "ctrl::k"],
+          "keymap: unknown symbols and comments are ignored")
+
+    // End to end: Ctrl-K enters kana mode after the override, Ctrl-J no longer does
+    let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-keymap-test")
+    session.overrideKeymap(settings.overrideText)
+    session.handle(charcode: UInt8(ascii: "l"))
+    check(session.inputMode == .ascii, "keymap: ascii mode before override test")
+    session.handle(charcode: UInt8(ascii: "j"), mods: [.ctrl])
+    check(session.inputMode == .ascii, "keymap: Ctrl-J no longer switches to kana")
+    session.handle(charcode: UInt8(ascii: "k"), mods: [.ctrl])
+    check(session.inputMode == .hirakana, "keymap: Ctrl-K switches to kana after override")
+    session.resetKeymap()
+    session.handle(charcode: UInt8(ascii: "l"))
+    session.handle(charcode: UInt8(ascii: "j"), mods: [.ctrl])
+    check(session.inputMode == .hirakana, "keymap: reset restores Ctrl-J")
+    _ = session.takeFixed()
 }
 
 if failures > 0 {

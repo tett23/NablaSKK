@@ -102,6 +102,14 @@ int32_t skk_session_candidate_cursor(const SkkSession *session);
 /* Returns (page << 16) | page_count, page is 1-based. */
 int32_t skk_session_candidate_page(const SkkSession *session);
 
+/* Dynamic completion ("suggest"): dictionary entries extending the reading
+ * being typed, offered while SKK_OPTION_ENABLE_DYNAMIC_COMPLETION is on. */
+int32_t skk_session_completion_visible(const SkkSession *session);
+int32_t skk_session_completion_count(const SkkSession *session);
+char *skk_session_completion(const SkkSession *session, int32_t index);
+/* Leading characters shared by every completion (the typed part). */
+int32_t skk_session_completion_prefix_length(const SkkSession *session);
+
 /* Engine options for skk_session_set_option. */
 enum {
     SKK_OPTION_SUPPRESS_NEWLINE_ON_COMMIT = 0,
@@ -111,7 +119,10 @@ enum {
     SKK_OPTION_FIX_INTERMEDIATE_CONVERSION = 4,
     SKK_OPTION_DISPLAY_SHORTEST_MATCH = 5,
     SKK_OPTION_USE_NUMERIC_CONVERSION = 6,
-    SKK_OPTION_MAX_INLINE_CANDIDATES = 7
+    SKK_OPTION_MAX_INLINE_CANDIDATES = 7,
+    SKK_OPTION_ENABLE_DYNAMIC_COMPLETION = 8,
+    SKK_OPTION_DYNAMIC_COMPLETION_RANGE = 9,
+    SKK_OPTION_ENABLE_EXTENDED_COMPLETION = 10  /* complete from all dictionaries */
 };
 
 /* Set an engine option. Returns 0 on success. */

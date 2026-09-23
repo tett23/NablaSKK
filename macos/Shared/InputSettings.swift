@@ -39,6 +39,17 @@ struct InputSettings: Equatable {
         }
     }
 
+    /// Dynamic completion ("suggest"): while a reading is typed, list
+    /// dictionary entries that extend it (AquaSKK's enable_dynamic_completion).
+    var suggestEnabled = false
+    /// How many entries to list (dynamic_completion_range).
+    var suggestCount = 5
+    /// Complete (TAB and suggest) from every dictionary rather than the
+    /// user dictionary alone (enable_extended_completion, on in AquaSKK).
+    var completionExtended = true
+
+    static let suggestCountRange = 1...20
+
     /// Query an external skkserv after every local dictionary.
     var skkservEnabled = false
     var skkservHost = "localhost"
@@ -63,6 +74,9 @@ struct InputSettings: Equatable {
     # NablaSKK input settings: key=value per line.
     #   comma=fullwidth   type , as ， (default: 、)
     #   period=fullwidth  type . as ． (default: 。)
+    #   suggest=on        list dictionary entries extending the reading being typed
+    #   suggest_count=5   how many to list
+    #   completion_extended=on|off  complete from all dictionaries (off: user dictionary only)
     #   skkserv=on        also query an skkserv, after the local dictionaries
     #   skkserv_host=localhost
     #   skkserv_port=1178
@@ -89,6 +103,10 @@ struct InputSettings: Equatable {
             switch key {
             case "comma": settings.fullWidthComma = value == "fullwidth"
             case "period": settings.fullWidthPeriod = value == "fullwidth"
+            case "suggest": settings.suggestEnabled = value == "on"
+            case "suggest_count":
+                settings.suggestCount = min(max(Int(value) ?? 5, suggestCountRange.lowerBound), suggestCountRange.upperBound)
+            case "completion_extended": settings.completionExtended = value != "off"
             case "skkserv": settings.skkservEnabled = value == "on"
             case "skkserv_host": settings.skkservHost = value
             case "skkserv_port": settings.skkservPort = Int(value) ?? 1178
@@ -103,6 +121,9 @@ struct InputSettings: Equatable {
         Self.header + "\n"
             + "comma=\(fullWidthComma ? "fullwidth" : "japanese")\n"
             + "period=\(fullWidthPeriod ? "fullwidth" : "japanese")\n"
+            + "suggest=\(suggestEnabled ? "on" : "off")\n"
+            + "suggest_count=\(suggestCount)\n"
+            + "completion_extended=\(completionExtended ? "on" : "off")\n"
             + "skkserv=\(skkservEnabled ? "on" : "off")\n"
             + "skkserv_host=\(skkservHost)\n"
             + "skkserv_port=\(skkservPort)\n"
