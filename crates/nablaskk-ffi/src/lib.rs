@@ -11,6 +11,7 @@ use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, Clipboard, Dynami
 use nablaskk_core::candidate::Candidate;
 use nablaskk_core::config::Config;
 use nablaskk_core::dictionary::{self, DictionaryKey, DictionaryType, Encoding, LocalUserDictionary};
+use nablaskk_core::event::{Event, EventId};
 use nablaskk_core::input_mode::InputMode;
 use nablaskk_core::keymap::Keymap;
 use nablaskk_core::session::{Session, SessionParameter};
@@ -272,6 +273,29 @@ pub unsafe extern "C" fn skk_session_handle(
 
     let event = session.keymap.fetch(charcode, keycode, mods);
     session.session.handle_event(&event) as i32
+}
+
+/// Switch the input mode (same numbering as `skk_session_input_mode`)
+/// through the engine's mode events, as AquaSKK does when the input
+/// source menu selects a mode. Returns 0 on success, -1 for an unknown
+/// mode.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_set_input_mode(session: *mut SkkSession, mode: i32) -> i32 {
+    let Some(session) = session.as_mut() else { return -1 };
+
+    let id = match mode {
+        0 => EventId::HirakanaMode,
+        1 => EventId::KatakanaMode,
+        2 => EventId::Jisx0201KanaMode,
+        3 => EventId::AsciiMode,
+        4 => EventId::Jisx0208LatinMode,
+        _ => return -1,
+    };
+    session.session.handle_event(&Event::new(id, 0, 0));
+    0
 }
 
 /// Set the text a paste event (Ctrl-Y / Cmd-V) will insert. Call this

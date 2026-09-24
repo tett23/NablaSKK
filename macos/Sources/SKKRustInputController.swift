@@ -137,17 +137,48 @@ enum DebugLog {
 public class SKKRustInputController: IMKInputController {
     private static weak var activeController: SKKRustInputController?
 
+    /// Input mode each application was last typing in, keyed by bundle
+    /// identifier. The engine session is shared, so switching clients
+    /// resets it to hiragana; an application last used in ASCII mode
+    /// (e.g. Ghostty) gets ASCII back instead.
+    ///
+    /// Recorded after every key rather than on deactivation: the system
+    /// may activate the next client before deactivating the previous one,
+    /// and by then the shared session has already been reset. Keyed per
+    /// application because the system hands out a fresh controller and a
+    /// fresh `uniqueClientIdentifierString` on every activation, even for
+    /// the same window, so nothing finer-grained survives a switch.
+    private static var lastInputModes: [String: SKKSession.InputMode] = [:]
+
+    private var clientKey: String {
+        client()?.bundleIdentifier() ?? "controller-\(ObjectIdentifier(self).hashValue)"
+    }
+
+    private func recordInputMode() {
+        Self.lastInputModes[clientKey] = Engine.session.inputMode
+    }
+
     public override func activateServer(_ sender: Any!) {
         Engine.reloadDictionariesIfChanged()
         Engine.reloadInputSettingsIfChanged()
         Engine.reloadKeymapIfChanged()
         Engine.session.reloadUserDictionaryIfChanged()
 
-        if Self.activeController !== self {
+        let switched = Self.activeController !== self
+        if switched {
             // Another client had pending composition; drop it
             Engine.session.clear()
             _ = Engine.session.takeFixed()
             Self.activeController = self
+
+            if Self.lastInputModes[clientKey] == .ascii {
+                Engine.session.inputMode = .ascii
+            }
+        }
+
+        DebugLog.write {
+            "activate client=\(clientKey) switched=\(switched) remembered=\(Self.lastInputModes[clientKey].map { "\($0)" } ?? "none") "
+                + "mode=\(Engine.session.inputMode)"
         }
     }
 
@@ -163,6 +194,10 @@ public class SKKRustInputController: IMKInputController {
         setMarkedText("", to: client)
         CompletionWindow.shared.hide()
         Engine.session.save()
+
+        DebugLog.write {
+            "deactivate client=\(clientKey) active=\(Self.activeController === self) mode=\(Engine.session.inputMode)"
+        }
     }
 
     public override func commitComposition(_ sender: Any!) {
@@ -214,6 +249,7 @@ public class SKKRustInputController: IMKInputController {
 
         let wasComposing = !Engine.session.composing.isEmpty
         let handled = Engine.session.handle(charcode: charcode, keycode: keycode, mods: mods)
+        recordInputMode()
 
         let produced = sync(to: client)
 

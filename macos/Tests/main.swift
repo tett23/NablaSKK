@@ -339,6 +339,22 @@ do {
     _ = session.takeFixed()
 }
 
+// Input mode can be set directly (used to restore a client's ASCII mode)
+do {
+    let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-mode-test")
+    session.inputMode = .ascii
+    check(session.inputMode == .ascii, "mode: set to ascii")
+    session.clear()
+    check(session.inputMode == .hirakana, "mode: clear resets to hiragana")
+    session.inputMode = .ascii
+    session.handle(charcode: UInt8(ascii: "a"))
+    check(session.composing.isEmpty && session.takeFixed().isEmpty, "mode: ascii passes keys through")
+    session.handle(charcode: UInt8(ascii: "j"), mods: [.ctrl])
+    check(session.inputMode == .hirakana, "mode: Ctrl-J returns to hiragana after a restored ascii mode")
+    session.inputMode = .katakana
+    check(session.inputMode == .katakana, "mode: set to katakana")
+}
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)

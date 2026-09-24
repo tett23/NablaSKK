@@ -123,7 +123,8 @@ public final class SKKSession {
     }
 
     public var inputMode: InputMode {
-        InputMode(rawValue: skk_session_input_mode(session)) ?? .hirakana
+        get { InputMode(rawValue: skk_session_input_mode(session)) ?? .hirakana }
+        set { skk_session_set_input_mode(session, newValue.rawValue) }
     }
 
     /// True while the candidate window should be shown.

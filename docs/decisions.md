@@ -104,6 +104,20 @@
   (skkserv UTF-8)を NablaSKK 独自に追加。`ProxyDictionary::with_encoding`
   で要求・応答の変換を切り替える。辞書リストの「+」からは skkserv タイプを
   外した(手書きの 2/6 行は従来どおり表示・編集できる)。
+- エンジンのセッションは全クライアントで 1 つを共有し、別クライアントが
+  アクティブになると `clear()` でひらがなに戻る(本家はクライアントごとに
+  セッションを持つのでモードも別々)。Ghostty のウィンドウ切り替えで英数が
+  ひらがなに変わるのを避けるため、アプリ(bundle identifier)ごとに最後の
+  モードを覚え、ASCII だった場合だけ `activateServer` で ASCII に戻す。
+  記録はキー処理のたびに行う。`deactivateServer` で記録すると、次の
+  クライアントの `activateServer` が先に走ってセッションが初期化された後の
+  ひらがなを記録してしまうことがあった(初版はこれで直らなかった)。
+  ウィンドウ単位にしたかったが、IMK はアクティブ化のたびに新しい
+  コントローラと新しい `uniqueClientIdentifierString` を渡してくる(同じ
+  ウィンドウでも毎回違う UUID)ので、切り替えをまたいで残る鍵はアプリ単位
+  しかなかった(2 版目はこれで直らなかった)。
+  FFI に `skk_session_set_input_mode`(エンジンの AsciiMode などのモード
+  イベントを送る)を追加。
 - サジェスト(本家の動的補完 `enable_dynamic_completion`)を実装。エンジンは
   既に `DynamicCompletor` を呼んでいたので FFI に `SharedCompletor` を足して
   補完一覧・共通接頭辞長を公開し(`skk_session_completion_*`)、IME 側の

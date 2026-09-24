@@ -87,6 +87,8 @@ char *skk_session_composing(const SkkSession *session);
 int32_t skk_session_composing_cursor(const SkkSession *session);
 
 int32_t skk_session_input_mode(const SkkSession *session);
+/* Switch to an SKK_MODE_* input mode. Returns 0 on success. */
+int32_t skk_session_set_input_mode(SkkSession *session, int32_t mode);
 
 void skk_session_commit(SkkSession *session);
 void skk_session_clear(SkkSession *session);
