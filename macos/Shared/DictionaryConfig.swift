@@ -102,7 +102,7 @@ enum DictionaryConfig {
     #   2 = skkserv host:port    4 = gadget (today/now/=expr)
     #   5 = SKK-JISYO (UTF-8 forced)    6 = skkserv host:port (UTF-8)
     # A leading "-" disables an entry. Edit with the NablaSKK preferences
-    # app (input menu > 辞書を管理...) or by hand.
+    # app (input menu > NablaSKK の設定...) or by hand.
     """
 
     /// Entries written on first launch.

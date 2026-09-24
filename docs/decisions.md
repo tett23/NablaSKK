@@ -82,7 +82,7 @@
 ### 設定アプリ
 - 別アプリ(`NablaSKK Preferences.app`)を IME バンドルの Resources に同梱。
   1 回のコピーで両方インストールされるようにするため。起動は IMK の
-  `menu()`(入力ソースメニューの「辞書を管理...」)。
+  `menu()`(入力ソースメニューの「NablaSKK の設定...」)。
 - SwiftUI の `App`/`WindowGroup` ライフサイクルは、swiftc 直ビルドでは
   ウィンドウが背面に回ったあと Dock クリックで出てこなかった → AppKit の
   `NSApplicationDelegate` でウィンドウを 1 つ保持し、

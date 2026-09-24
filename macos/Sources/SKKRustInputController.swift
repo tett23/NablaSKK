@@ -214,7 +214,7 @@ public class SKKRustInputController: IMKInputController {
     // Items appended to the input source menu in the menu bar
     public override func menu() -> NSMenu! {
         let menu = NSMenu()
-        let item = NSMenuItem(title: "辞書を管理...", action: #selector(openPreferences(_:)), keyEquivalent: "")
+        let item = NSMenuItem(title: "NablaSKK の設定...", action: #selector(openPreferences(_:)), keyEquivalent: "")
         item.target = self
         menu.addItem(item)
         return menu

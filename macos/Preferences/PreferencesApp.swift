@@ -53,7 +53,7 @@ final class PreferencesAppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// Activation from the input method's "辞書を管理..." item
+    /// Activation from the input method's "NablaSKK の設定..." item
     func applicationDidBecomeActive(_ notification: Notification) {
         showWindow()
     }
