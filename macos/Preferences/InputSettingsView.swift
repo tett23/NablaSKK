@@ -1,4 +1,4 @@
-// NablaSKK Preferences: input settings tab.
+// NablaSKK Preferences: input settings and skkserv panes.
 //
 // Written by tett23, 2026.
 // License: GPL-2.0-or-later. See the LICENSE file for details.
@@ -77,6 +77,7 @@ struct InputSettingsView: View {
                 Text("設定は次にどこかのアプリで入力を始めたときに反映されます。")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let error = store.saveError {
@@ -88,7 +89,7 @@ struct InputSettingsView: View {
     }
 }
 
-/// skkserv tab, modelled on AquaSKK's dictionary server settings. The
+/// skkserv pane, modelled on AquaSKK's dictionary server settings. The
 /// server is queried after every dictionary in dictionaries.conf, so
 /// local dictionaries always win.
 struct SkkservSettingsView: View {
@@ -131,13 +132,15 @@ struct SkkservSettingsView: View {
                 Text("skkserv").font(.headline)
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("「辞書」タブの辞書をすべて検索したあとで skkserv に問い合わせます"
+                    Text("「辞書」ページの辞書をすべて検索したあとで skkserv に問い合わせます"
                          + "(ローカルの辞書が優先されます)。")
                     Text("従来の skkserv は EUC-JP です。yaskkserv2 などを UTF-8 で動かしている場合は UTF-8 を選んでください。"
                          + " 設定は次にどこかのアプリで入力を始めたときに反映されます。")
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 480, alignment: .leading)
             }
 
             if let error = store.saveError {

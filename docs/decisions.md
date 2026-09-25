@@ -89,6 +89,13 @@
   `applicationShouldHandleReopen` と `applicationDidBecomeActive` の両方で
   前面に出す構成に変更。閉じると終了、多重起動禁止、編集メニューは手組み。
   `windowResizability` は macOS 13 以降のため使わない(対象は 12 以降)。
+- 設定画面のページ切り替えは上部タブ(`TabView`)から左サイドバーに変更
+  (ページを増やしていくため)。`NavigationSplitView` は macOS 13 以降なので
+  使わず、`List(selection:)` の sidebar スタイルも試したがクリックでページが
+  切り替わらなかったため、ボタンの縦並び + 自前の選択背景(アクセント色)+
+  `NSVisualEffectView` の `.sidebar` 素材で組んだ。最後に開いたページは
+  `@AppStorage("selectedSettingsPane")` で覚える。ページを切り替えると
+  ビューが破棄されるので、ユーザー辞書の遅延保存は store の deinit で確定する。
 - `dictionaries.conf` の無効エントリは行頭 `-`(旧パーサでも読み飛ばされる)。
   GUI から追加した辞書は `~/Library/Application Support/NablaSKK/dictionaries/`
   にコピーして、そのパスを設定に書く。同名ファイルは上書き(辞書の更新版を

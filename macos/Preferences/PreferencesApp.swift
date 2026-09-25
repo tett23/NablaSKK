@@ -1,4 +1,4 @@
-// NablaSKK Preferences: dictionary management window.
+// NablaSKK Preferences: settings window with a sidebar of panes.
 //
 // Written by tett23, 2026.
 // License: GPL-2.0-or-later. See the LICENSE file for details.
@@ -6,22 +6,133 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct RootView: View {
-    var body: some View {
-        TabView {
-            DictionaryListView()
-                .tabItem { Label("辞書", systemImage: "books.vertical") }
-            UserDictionaryView()
-                .tabItem { Label("ユーザー辞書", systemImage: "person.text.rectangle") }
-            SkkservSettingsView()
-                .tabItem { Label("skkserv", systemImage: "network") }
-            InputSettingsView()
-                .tabItem { Label("入力", systemImage: "keyboard") }
-            KeymapSettingsView()
-                .tabItem { Label("キー", systemImage: "command") }
+/// One page of the settings window. Add a case (and its view in
+/// `RootView.detail`) to add a page to the sidebar.
+enum SettingsPane: String, CaseIterable, Identifiable {
+    case dictionaries
+    case userDictionary
+    case skkserv
+    case input
+    case keys
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .dictionaries: return "辞書"
+        case .userDictionary: return "ユーザー辞書"
+        case .skkserv: return "skkserv"
+        case .input: return "入力"
+        case .keys: return "キー"
         }
-        .padding(.top, 4)
-        .frame(minWidth: 720, minHeight: 440)
+    }
+
+    var systemImage: String {
+        switch self {
+        case .dictionaries: return "books.vertical"
+        case .userDictionary: return "person.text.rectangle"
+        case .skkserv: return "network"
+        case .input: return "keyboard"
+        case .keys: return "command"
+        }
+    }
+}
+
+/// Sidebar on the left, the selected pane on the right. The sidebar is
+/// a column of buttons rather than a List with selection: List selection
+/// did not switch the pane here, and NavigationSplitView needs macOS 13.
+struct RootView: View {
+    static let sidebarWidth: CGFloat = 180
+
+    /// Remembered across launches so the window reopens where it was left.
+    @AppStorage("selectedSettingsPane") private var selectedPane = SettingsPane.dictionaries.rawValue
+
+    private var pane: SettingsPane { SettingsPane(rawValue: selectedPane) ?? .dictionaries }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(SettingsPane.allCases) { item in
+                    SidebarItem(pane: item, isSelected: item == pane) {
+                        selectedPane = item.rawValue
+                    }
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+            .frame(width: Self.sidebarWidth)
+            .frame(maxHeight: .infinity)
+            .background(SidebarBackground())
+
+            Divider()
+
+            // minWidth 0: a pane with long unwrapped text must not push
+            // the whole row wider than the window (which shifted the
+            // sidebar off its left edge)
+            detail
+                .id(pane)
+                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .clipped()
+        }
+        .frame(minWidth: Self.sidebarWidth + 720, minHeight: 440)
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch pane {
+        case .dictionaries: DictionaryListView()
+        case .userDictionary: UserDictionaryView()
+        case .skkserv: SkkservSettingsView()
+        case .input: InputSettingsView()
+        case .keys: KeymapSettingsView()
+        }
+    }
+}
+
+/// The translucent sidebar material Finder and System Settings use; it
+/// follows light / dark mode on its own.
+struct SidebarBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .sidebar
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+/// One sidebar row; the selected row gets an accent-coloured background.
+struct SidebarItem: View {
+    let pane: SettingsPane
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: pane.systemImage)
+                    .frame(width: 20)
+                Text(pane.title)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .foregroundColor(isSelected ? .white : .primary)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isSelected ? Color.accentColor
+                          : hovering ? Color.primary.opacity(0.08) : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -65,7 +176,7 @@ final class PreferencesAppDelegate: NSObject, NSApplicationDelegate {
     private func showWindow() {
         if window == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 760, height: 480),
+                contentRect: NSRect(x: 0, y: 0, width: 920, height: 520),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false

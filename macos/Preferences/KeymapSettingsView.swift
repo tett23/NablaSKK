@@ -1,4 +1,4 @@
-// NablaSKK Preferences: key binding tab.
+// NablaSKK Preferences: key binding pane.
 //
 // Written by tett23, 2026.
 // License: GPL-2.0-or-later. See the LICENSE file for details.

@@ -23,7 +23,7 @@ struct DictionaryEntry: Identifiable, Equatable, Codable {
         var id: Int32 { rawValue }
 
         /// Kinds offered by the "+" menu. skkserv entries are configured
-        /// on the skkserv tab so they always come after the local
+        /// on the skkserv pane so they always come after the local
         /// dictionaries; hand-written ones are still shown and editable.
         static var addable: [Kind] { allCases.filter { $0 != .proxy && $0 != .proxyUTF8 } }
 

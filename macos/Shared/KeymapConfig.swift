@@ -60,7 +60,7 @@ struct KeymapSettings: Equatable {
     static let header = """
     # NablaSKK key bindings: "Symbol keys" per line, keymap.conf syntax.
     # Each line replaces every key of its symbol in the built-in keymap.
-    # Edit with the NablaSKK preferences app (キー tab) or by hand.
+    # Edit with the NablaSKK preferences app (キー pane) or by hand.
     """
 
     /// Effective key spec for an action.

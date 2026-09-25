@@ -40,6 +40,12 @@ final class UserDictionaryStore: ObservableObject {
         (try? FileManager.default.attributesOfItem(atPath: UserDictionary.fileURL.path))?[.modificationDate] as? Date
     }
 
+    /// Switching panes in the sidebar discards this store; flush an edit
+    /// still waiting for its debounced save so it is not lost.
+    deinit {
+        if saveTimer != nil { saveNow() }
+    }
+
     func scheduleSave() {
         saveTimer?.invalidate()
         saveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
