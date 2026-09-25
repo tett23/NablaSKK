@@ -20,6 +20,7 @@ SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Shared/UserDictionaryModel.swift \
     macos/Shared/InputSettings.swift \
     macos/Shared/KeymapConfig.swift \
+    macos/Shared/KanaRuleConfig.swift \
     macos/Sources/KeyTranslator.swift \
     macos/Sources/ClientQuirks.swift \
     macos/Sources/CompletionWindow.swift \
@@ -29,10 +30,12 @@ PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
     macos/Shared/UserDictionaryModel.swift \
     macos/Shared/InputSettings.swift \
     macos/Shared/KeymapConfig.swift \
+    macos/Shared/KanaRuleConfig.swift \
     macos/Preferences/PreferencesApp.swift \
     macos/Preferences/UserDictionaryView.swift \
     macos/Preferences/InputSettingsView.swift \
-    macos/Preferences/KeymapSettingsView.swift"
+    macos/Preferences/KeymapSettingsView.swift \
+    macos/Preferences/KanaRuleSettingsView.swift"
 PREFS_APP="$CONTENTS/Resources/NablaSKK Preferences.app"
 MACOS_TARGET=12
 
@@ -64,6 +67,9 @@ build_prefs() {
 prepare_prefs_bundle() {
     mkdir -p "$PREFS_APP/Contents/MacOS"
     cp macos/Preferences/Info.plist "$PREFS_APP/Contents/Info.plist"
+    # Built-in rules, to show which one a user rule replaces
+    mkdir -p "$PREFS_APP/Contents/Resources"
+    cp data/kana-rule.utf8.conf "$PREFS_APP/Contents/Resources/"
     printf 'APPL????' > "$PREFS_APP/Contents/PkgInfo"
 }
 

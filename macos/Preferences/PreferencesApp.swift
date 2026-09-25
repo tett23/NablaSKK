@@ -13,6 +13,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case userDictionary
     case skkserv
     case input
+    case kanaRules
     case keys
 
     var id: String { rawValue }
@@ -23,6 +24,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .userDictionary: return "ユーザー辞書"
         case .skkserv: return "skkserv"
         case .input: return "入力"
+        case .kanaRules: return "ローマ字"
         case .keys: return "キー"
         }
     }
@@ -33,6 +35,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .userDictionary: return "person.text.rectangle"
         case .skkserv: return "network"
         case .input: return "keyboard"
+        case .kanaRules: return "textformat.abc"
         case .keys: return "command"
         }
     }
@@ -85,6 +88,7 @@ struct RootView: View {
         case .userDictionary: UserDictionaryView()
         case .skkserv: SkkservSettingsView()
         case .input: InputSettingsView()
+        case .kanaRules: KanaRuleSettingsView()
         case .keys: KeymapSettingsView()
         }
     }

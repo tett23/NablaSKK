@@ -339,6 +339,90 @@ do {
     _ = session.takeFixed()
 }
 
+// User romaji-kana rules: validation, derived outputs, escaping, round trip, engine
+do {
+    check(KanaRule(input: "fj", output: "、").problem == nil, "kana rule: fj → 、 is valid")
+    check(KanaRule(input: "", output: "、").problem == .emptyInput, "kana rule: empty input")
+    check(KanaRule(input: "fj", output: "").problem == .emptyOutput, "kana rule: empty output")
+    check(KanaRule(input: "Fj", output: "、").problem == .uppercase, "kana rule: uppercase rejected")
+    check(KanaRule(input: "f j", output: "、").problem == .invalidCharacters, "kana rule: space rejected")
+    check(KanaRule(input: "ふ", output: "、").problem == .invalidCharacters, "kana rule: non-ASCII rejected")
+    check(KanaRule(input: "abcdefghi", output: "x").problem == .tooLong, "kana rule: too long")
+    check(KanaRule(input: "lj", output: "x").problem == .modeKey("l"), "kana rule: l-prefixed rule is unreachable")
+    check(KanaRule(input: "です", output: "x").problem != nil, "kana rule: kana input rejected")
+
+    let desu = KanaRule(input: "ds", output: "です")
+    check(desu.katakana == "デス" && desu.jisx0201Kana == "ﾃﾞｽ", "kana rule: katakana and half-width outputs derived")
+    check(KanaRule(input: "fj", output: "、").jisx0201Kana == "､", "kana rule: half-width comma")
+
+    let tricky = KanaRule(input: "#,", output: "a b,c")
+    check(tricky.line == "&sharp;&comma;,a&space;b&comma;c,a&space;b&comma;c,a&space;b&comma;c", "kana rule: escaping")
+    var settings = KanaRuleSettings(rules: [KanaRule(input: "fj", output: "、"), KanaRule(input: "fk", output: "。"),
+                                            tricky, KanaRule(input: "lj", output: "x")])
+    check(KanaRuleSettings.parse(settings.serialize()) == settings, "kana rule: serialize/parse round trip")
+    check(!settings.patchText.contains("lj,"), "kana rule: unusable rules are not sent to the engine")
+
+    let builtinList = KanaRuleSettings.builtinRules(from: try! String(contentsOfFile: "data/kana-rule.utf8.conf", encoding: .utf8))
+    let builtin = Dictionary(builtinList.map { ($0.input, $0.output) }, uniquingKeysWith: { $1 })
+    check(builtin["z."] == "…" && builtin["z,"] == "‥" && builtin["ka"] == "か", "kana rule: built-in table parsed")
+    check(builtinList.first?.input == "a" && Set(builtinList.map(\.input)).count == builtinList.count,
+          "kana rule: built-in list keeps file order without duplicate inputs")
+    check(KanaRuleSettings.builtinRules(from: "a,あ,ア,ｱ\nb,x,x,x\na,ぁ,ァ,ｧ\n").map { "\($0.input)\($0.output)" } == ["aぁ", "bx"],
+          "kana rule: a later built-in line replaces the earlier one in place")
+    let symbols = builtinList.filter(\.isSymbolRule).map(\.input)
+    check(Set(symbols) == ["z,", "z-", "z.", "z/", "z[", "z]", "zh", "zj", "zk", "zl", "z ", "-", ":", ";", "[", "]", ".", ","],
+          "kana rule: only symbol rules are shown from the built-in table")
+    check(!KanaRule(input: "vu", output: "う゛").isSymbolRule && !KanaRule(input: "xka", output: "ヵ").isSymbolRule
+          && KanaRule(input: "-", output: "ー").isSymbolRule && KanaRule(input: "fj", output: "、").isSymbolRule,
+          "kana rule: kana letters are not symbols; ー and 、 are")
+
+    // Conflicts: duplicates, same input, and extending a rule that completes on its last key
+    func conflicted(_ pairs: [(String, String)]) -> [String?] {
+        let s = KanaRuleSettings(rules: pairs.map { KanaRule(input: $0.0, output: $0.1) })
+        let c = s.conflicts(builtin: builtinList)
+        return s.rules.map { c[$0.id] }
+    }
+    check(conflicted([("fj", "、"), ("fk", "。")]) == [nil, nil], "kana conflict: fj and fk are fine")
+    check(conflicted([("z.", "…")])[0]?.contains("同じルールが組み込み") == true, "kana conflict: same as built-in z.")
+    check(conflicted([("z.", "。")])[0]?.contains("衝突") == true, "kana conflict: built-in z. with a different output")
+    check(conflicted([("fj", "、"), ("fj", "、")]).map { $0 != nil } == [false, true], "kana conflict: duplicate user rule flags the later one")
+    check(conflicted([("fj", "、"), ("fj", "。")])[1]?.contains("追加したルール「fj → 、」") == true, "kana conflict: same input as an earlier user rule")
+    check(conflicted([("ka.", "x")])[0]?.contains("「ka → か」がすぐに確定しなくなる") == true, "kana conflict: ka. would delay ka")
+    check(conflicted([(",,", "x")])[0] != nil, "kana conflict: ,, would delay ,")
+    check(conflicted([("fj", "、"), ("fjk", "x")]).map { $0 != nil } == [false, true], "kana conflict: fjk would delay the user's fj")
+    check(conflicted([("n.", "x")]) == [nil], "kana conflict: n. is fine (n already waits for na, ni ...)")
+    check(conflicted([("z", "x"), ("f", "y")]) == [nil, nil], "kana conflict: a prefix of existing rules is allowed")
+    check(conflicted([("lj", "x"), ("lj", "y")]) == [nil, nil], "kana conflict: invalid rules are left to problem checks")
+    let mixed = KanaRuleSettings(rules: [KanaRule(input: "fj", output: "、"), KanaRule(input: "z.", output: "。"),
+                                         KanaRule(input: "", output: ""), KanaRule(input: "fj", output: "x")])
+    check(mixed.acceptedRules(builtin: builtinList).map(\.input) == ["fj"], "kana conflict: only usable rules are saved")
+
+    // End to end through the engine
+    let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-kanarule-test")
+    session.patchKanaRules(settings.patchText)
+    for c in "fj".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "、", "kana rule: fj types 、")
+    for c in "fk".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "。", "kana rule: fk types 。")
+    for c in "fujisann".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "ふじさん", "kana rule: fu... still works")
+    for c in "z.".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "…", "kana rule: built-in z. still works")
+    session.handle(charcode: UInt8(ascii: "q"))
+    for c in "fj".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "、", "kana rule: katakana mode types 、")
+    session.handle(charcode: UInt8(ascii: "q"))
+    for c in "Kafj".utf8 { session.handle(charcode: c) }
+    check(session.composing == "▽か、", "kana rule: works inside ▽ reading")
+    session.clear()
+    _ = session.takeFixed()
+    settings.rules = [KanaRule(input: "z.", output: "。")]
+    session.resetKanaRules()
+    session.patchKanaRules(settings.patchText)
+    for c in "z.".utf8 { session.handle(charcode: c) }
+    check(session.takeFixed() == "。", "kana rule: user rule overrides built-in z.")
+}
+
 // Input mode can be set directly (used to restore a client's ASCII mode)
 do {
     let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-mode-test")

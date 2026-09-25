@@ -53,20 +53,36 @@ enum Engine {
     /// changed on disk. The skkserv entry lives in the dictionary list,
     /// so the dictionaries are rebuilt too.
     static func reloadInputSettingsIfChanged() {
+        if KanaRuleSettings.modificationDate != loadedKanaRulesDate && InputSettings.modificationDate == loadedSettingsDate {
+            applyKanaRules(to: session, settings: InputSettings.load())
+        }
         guard InputSettings.modificationDate != loadedSettingsDate else { return }
         applyInputSettings(to: session)
         session.clearDictionaries()
         loadDictionaries(into: session)
     }
 
-    private static func applyInputSettings(to session: SKKSession) {
-        loadedSettingsDate = InputSettings.modificationDate
-        let settings = InputSettings.load()
+    private static var loadedKanaRulesDate: Date?
 
+    /// Built-in rules, then the punctuation sub-rules from settings.conf,
+    /// then the user's kana-rule.conf (so user rules win).
+    private static func applyKanaRules(to session: SKKSession, settings: InputSettings) {
+        loadedKanaRulesDate = KanaRuleSettings.modificationDate
         session.resetKanaRules()
         if !settings.kanaRulePatch.isEmpty {
             session.patchKanaRules(settings.kanaRulePatch)
         }
+        let userRules = KanaRuleSettings.load().patchText
+        if !userRules.isEmpty {
+            session.patchKanaRules(userRules)
+        }
+    }
+
+    private static func applyInputSettings(to session: SKKSession) {
+        loadedSettingsDate = InputSettings.modificationDate
+        let settings = InputSettings.load()
+
+        applyKanaRules(to: session, settings: settings)
         session.setOption(.enableDynamicCompletion, settings.suggestEnabled ? 1 : 0)
         session.setOption(.dynamicCompletionRange, Int32(settings.suggestCount))
         session.setOption(.enableExtendedCompletion, settings.completionExtended ? 1 : 0)
