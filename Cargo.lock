@@ -4,25 +4,25 @@ version = 4
 
 [[package]]
 name = "nablaskk-core"
-version = "1.0.0"
+version = "1.0.1"
 
 [[package]]
 name = "nablaskk-ffi"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "nablaskk-core",
 ]
 
 [[package]]
 name = "skk-cli"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "nablaskk-core",
 ]
 
 [[package]]
 name = "skkserv"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "nablaskk-core",
 ]
