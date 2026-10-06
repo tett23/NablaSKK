@@ -50,6 +50,10 @@ struct InputSettings: Equatable {
 
     static let suggestCountRange = 1...20
 
+    /// Show the dictionary annotation of the candidate being selected
+    /// ("悪;わるし（形）"). Off by default, as AquaSKK's enable_annotation.
+    var annotationEnabled = false
+
     /// Query an external skkserv after every local dictionary.
     var skkservEnabled = false
     var skkservHost = "localhost"
@@ -77,6 +81,7 @@ struct InputSettings: Equatable {
     #   suggest=on        list dictionary entries extending the reading being typed
     #   suggest_count=5   how many to list
     #   completion_extended=on|off  complete from all dictionaries (off: user dictionary only)
+    #   annotation=on|off show the selected candidate's dictionary annotation
     #   skkserv=on        also query an skkserv, after the local dictionaries
     #   skkserv_host=localhost
     #   skkserv_port=1178
@@ -107,6 +112,7 @@ struct InputSettings: Equatable {
             case "suggest_count":
                 settings.suggestCount = min(max(Int(value) ?? 5, suggestCountRange.lowerBound), suggestCountRange.upperBound)
             case "completion_extended": settings.completionExtended = value != "off"
+            case "annotation": settings.annotationEnabled = value == "on"
             case "skkserv": settings.skkservEnabled = value == "on"
             case "skkserv_host": settings.skkservHost = value
             case "skkserv_port": settings.skkservPort = Int(value) ?? 1178
@@ -124,6 +130,7 @@ struct InputSettings: Equatable {
             + "suggest=\(suggestEnabled ? "on" : "off")\n"
             + "suggest_count=\(suggestCount)\n"
             + "completion_extended=\(completionExtended ? "on" : "off")\n"
+            + "annotation=\(annotationEnabled ? "on" : "off")\n"
             + "skkserv=\(skkservEnabled ? "on" : "off")\n"
             + "skkserv_host=\(skkservHost)\n"
             + "skkserv_port=\(skkservPort)\n"

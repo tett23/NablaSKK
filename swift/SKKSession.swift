@@ -150,6 +150,13 @@ public final class SKKSession {
         return (Int(packed >> 16), Int(packed & 0xffff))
     }
 
+    /// Annotation of the candidate being selected (needs
+    /// `.enableAnnotation`), or nil when there is none.
+    public var annotation: String? {
+        guard let ptr = skk_session_annotation(session) else { return nil }
+        return takeString(ptr)
+    }
+
     /// True while dynamic completions ("suggest") should be shown.
     public var completionVisible: Bool {
         skk_session_completion_visible(session) == 1
@@ -179,6 +186,7 @@ public final class SKKSession {
         case enableDynamicCompletion = 8
         case dynamicCompletionRange = 9
         case enableExtendedCompletion = 10
+        case enableAnnotation = 11
     }
 
     /// Set an engine option (booleans take 0/1).

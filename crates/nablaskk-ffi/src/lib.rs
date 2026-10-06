@@ -7,7 +7,9 @@
 //! released with `skk_string_free`.
 
 use nablaskk_core::backend::Backend;
-use nablaskk_core::bridge::{BufferedFrontEnd, CandidateWindow, Clipboard, DynamicCompletor, NullWidgets};
+use nablaskk_core::bridge::{
+    Annotator, BufferedFrontEnd, CandidateWindow, Clipboard, DynamicCompletor, NullWidgets,
+};
 use nablaskk_core::candidate::Candidate;
 use nablaskk_core::config::Config;
 use nablaskk_core::dictionary::{self, DictionaryKey, DictionaryType, Encoding, LocalUserDictionary};
@@ -87,6 +89,33 @@ impl DynamicCompletor for SharedCompletor {
     }
 }
 
+/// Annotation of the candidate being selected, mirrored for the host UI
+/// (port of the data half of `MacAnnotator`; drawing is the host's).
+#[derive(Debug, Clone, Default)]
+struct AnnotationState {
+    visible: bool,
+    annotation: String,
+}
+
+struct SharedAnnotator(Rc<RefCell<AnnotationState>>);
+
+impl Annotator for SharedAnnotator {
+    fn update(&mut self, candidate: &Candidate, _mark: usize) {
+        self.0.borrow_mut().annotation = candidate.annotation().to_string();
+    }
+
+    fn show(&mut self) {
+        let mut state = self.0.borrow_mut();
+        state.visible = !state.annotation.is_empty();
+    }
+
+    fn hide(&mut self) {
+        let mut state = self.0.borrow_mut();
+        state.visible = false;
+        state.annotation.clear();
+    }
+}
+
 /// Clipboard contents supplied by the host (the engine cannot reach the
 /// system pasteboard itself).
 struct SharedClipboard(Rc<RefCell<String>>);
@@ -103,6 +132,7 @@ pub struct SkkSession {
     frontend: Rc<RefCell<BufferedFrontEnd>>,
     window: Rc<RefCell<WindowState>>,
     completion: Rc<RefCell<CompletionState>>,
+    annotation: Rc<RefCell<AnnotationState>>,
     clipboard: Rc<RefCell<String>>,
 }
 
@@ -138,6 +168,7 @@ pub extern "C" fn skk_session_new(user_dictionary_path: *const c_char) -> *mut S
     let frontend = Rc::new(RefCell::new(BufferedFrontEnd::default()));
     let window = Rc::new(RefCell::new(WindowState::default()));
     let completion = Rc::new(RefCell::new(CompletionState::default()));
+    let annotation = Rc::new(RefCell::new(AnnotationState::default()));
     let clipboard = Rc::new(RefCell::new(String::new()));
 
     let session = Session::new(SessionParameter {
@@ -148,11 +179,11 @@ pub extern "C" fn skk_session_new(user_dictionary_path: *const c_char) -> *mut S
         window: Box::new(SharedWindow(window.clone())),
         messenger: Box::new(NullWidgets),
         clipboard: Box::new(SharedClipboard(clipboard.clone())),
-        annotator: Box::new(NullWidgets),
+        annotator: Box::new(SharedAnnotator(annotation.clone())),
         completor: Box::new(SharedCompletor(completion.clone())),
     });
 
-    Box::into_raw(Box::new(SkkSession { session, keymap, frontend, window, completion, clipboard }))
+    Box::into_raw(Box::new(SkkSession { session, keymap, frontend, window, completion, annotation, clipboard }))
 }
 
 /// # Safety
@@ -518,6 +549,23 @@ pub unsafe extern "C" fn skk_session_completion_prefix_length(session: *const Sk
     session.completion.borrow().common_prefix_length as i32
 }
 
+/// Annotation of the candidate being selected (the part after ";" in the
+/// dictionary, e.g. "わるし（形）"), or NULL when there is none or
+/// SKK_OPTION_ENABLE_ANNOTATION is off. Caller frees.
+///
+/// # Safety
+/// `session` must be a valid session pointer.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_annotation(session: *const SkkSession) -> *mut c_char {
+    let Some(session) = session.as_ref() else { return std::ptr::null_mut() };
+    let state = session.annotation.borrow();
+    if state.visible {
+        into_cstring(state.annotation.clone())
+    } else {
+        std::ptr::null_mut()
+    }
+}
+
 /// Boolean engine options for skk_session_set_option.
 pub const SKK_OPTION_SUPPRESS_NEWLINE_ON_COMMIT: i32 = 0;
 pub const SKK_OPTION_INLINE_BACKSPACE_IMPLIES_COMMIT: i32 = 1;
@@ -534,6 +582,9 @@ pub const SKK_OPTION_DYNAMIC_COMPLETION_RANGE: i32 = 9;
 /// Complete (TAB and suggest) from every dictionary, not only the user's
 /// (AquaSKK's enable_extended_completion; its shipped default is on).
 pub const SKK_OPTION_ENABLE_EXTENDED_COMPLETION: i32 = 10;
+/// Report annotations of the candidate being selected
+/// (AquaSKK's enable_annotation).
+pub const SKK_OPTION_ENABLE_ANNOTATION: i32 = 11;
 
 /// Set an engine option. Returns 0 on success.
 ///
@@ -581,6 +632,9 @@ pub unsafe extern "C" fn skk_session_set_option(
         }
         SKK_OPTION_ENABLE_EXTENDED_COMPLETION => {
             session.session.backend_mut().enable_extended_completion(flag);
+        }
+        SKK_OPTION_ENABLE_ANNOTATION => {
+            session.session.config_mut().enable_annotation = flag;
         }
         _ => return -1,
     }

@@ -73,6 +73,20 @@ struct InputSettingsView: View {
                 }
             } header: {
                 Text("サジェスト").font(.headline)
+            }
+
+            Section {
+                Toggle(isOn: $store.settings.annotationEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("変換候補の注釈を表示する")
+                        Text("候補を選んでいる間、辞書の注釈(「悪;わるし（形）」の「わるし（形）」など)をカーソルの下に表示します。")
+                            .font(.caption).foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: 440, alignment: .leading)
+                    }
+                }
+            } header: {
+                Text("注釈").font(.headline)
             } footer: {
                 Text("設定は次にどこかのアプリで入力を始めたときに反映されます。")
                     .font(.caption)

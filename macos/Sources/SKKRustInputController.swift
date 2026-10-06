@@ -86,6 +86,7 @@ enum Engine {
         session.setOption(.enableDynamicCompletion, settings.suggestEnabled ? 1 : 0)
         session.setOption(.dynamicCompletionRange, Int32(settings.suggestCount))
         session.setOption(.enableExtendedCompletion, settings.completionExtended ? 1 : 0)
+        session.setOption(.enableAnnotation, settings.annotationEnabled ? 1 : 0)
     }
 
     private static var loadedConfigDate: Date?
@@ -209,6 +210,7 @@ public class SKKRustInputController: IMKInputController {
         }
         setMarkedText("", to: client)
         CompletionWindow.shared.hide()
+        AnnotationWindow.shared.hide()
         Engine.session.save()
 
         DebugLog.write {
@@ -360,6 +362,14 @@ public class SKKRustInputController: IMKInputController {
                 client: client)
         } else {
             CompletionWindow.shared.hide()
+        }
+
+        // The selected candidate's annotation, also under the caret (only
+        // while selecting, so it never overlaps the suggestions)
+        if let annotation = Engine.session.annotation {
+            AnnotationWindow.shared.show(annotation, client: client)
+        } else {
+            AnnotationWindow.shared.hide()
         }
 
         return !fixed.isEmpty || !marked.isEmpty

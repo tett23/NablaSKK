@@ -24,6 +24,7 @@ SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Sources/KeyTranslator.swift \
     macos/Sources/ClientQuirks.swift \
     macos/Sources/CompletionWindow.swift \
+    macos/Sources/AnnotationWindow.swift \
     macos/Sources/SKKRustInputController.swift \
     macos/Sources/main.swift"
 PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \

@@ -423,6 +423,35 @@ do {
     check(session.takeFixed() == "。", "kana rule: user rule overrides built-in z.")
 }
 
+// Annotations: off by default, the selected candidate's annotation when on
+do {
+    check(!InputSettings().annotationEnabled, "annotation: off by default (as AquaSKK)")
+    let on = InputSettings.parse("annotation=on\n")
+    check(on.annotationEnabled && InputSettings.parse(on.serialize()) == on, "annotation: parse and round trip")
+
+    let dict = NSTemporaryDirectory() + "nablaskk-annotation-dict"
+    try! ";; okuri-ari entries.\n;; okuri-nasi entries.\nかんじ /漢字;kanji/感じ/幹事;かんじ（名）/\n"
+        .write(toFile: dict, atomically: true, encoding: .utf8)
+    // Fresh user dictionary: a previous run learned 幹事 and would reorder
+    let userDict = NSTemporaryDirectory() + "nablaskk-annotation-user"
+    try? FileManager.default.removeItem(atPath: userDict)
+    let session = SKKSession(userDictionaryPath: userDict)
+    session.addDictionary(.commonUTF8, location: dict)
+    for c in "Kanji ".utf8 { session.handle(charcode: c) }
+    check(session.composing == "▼漢字" && session.annotation == nil, "annotation: hidden while the option is off")
+    session.clear()
+    session.setOption(.enableAnnotation, 1)
+    for c in "Kanji ".utf8 { session.handle(charcode: c) }
+    check(session.annotation == "kanji", "annotation: first candidate's annotation")
+    session.handle(charcode: 0x20)
+    check(session.composing == "▼感じ" && session.annotation == nil, "annotation: none for a candidate without one")
+    session.handle(charcode: 0x20)
+    check(session.annotation == "かんじ（名）", "annotation: third candidate's annotation")
+    session.handle(charcode: 0x0d)
+    check(session.annotation == nil && session.takeFixed() == "幹事", "annotation: gone after commit, the word has no annotation")
+    try? FileManager.default.removeItem(atPath: dict)
+}
+
 // Input mode can be set directly (used to restore a client's ASCII mode)
 do {
     let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-mode-test")

@@ -39,8 +39,8 @@ final class CompletionWindow {
         let size = view.frame.size
         panel.setContentSize(size)
 
-        let caret = caretRect(of: client, fallbackHeight: size.height)
-        panel.setFrameOrigin(origin(for: size, caret: caret))
+        let caret = Self.caretRect(of: client, fallbackHeight: size.height)
+        panel.setFrameOrigin(Self.origin(for: size, caret: caret))
         panel.level = NSWindow.Level(rawValue: Int(client.windowLevel()) + 1)
         panel.orderFront(nil)
     }
@@ -67,7 +67,7 @@ final class CompletionWindow {
 
     /// Caret line rectangle in screen coordinates; clients that do not
     /// report one get the mouse location (AquaSKK uses the screen origin).
-    private func caretRect(of client: IMKTextInput, fallbackHeight: CGFloat) -> NSRect {
+    static func caretRect(of client: IMKTextInput, fallbackHeight: CGFloat) -> NSRect {
         var rect = NSRect.zero
         let attributes = client.attributes(forCharacterIndex: 0, lineHeightRectangle: &rect)
         if rect.origin == .zero && rect.size == .zero {
@@ -85,7 +85,7 @@ final class CompletionWindow {
     /// Top-left at the caret's bottom-left (CompletionWindow showCompletion),
     /// kept on screen: pulled left at the right edge, flipped above the
     /// caret at the bottom edge.
-    private func origin(for size: NSSize, caret: NSRect) -> NSPoint {
+    static func origin(for size: NSSize, caret: NSRect) -> NSPoint {
         let screen = (NSScreen.screens.first { $0.frame.contains(caret.origin) } ?? NSScreen.main)?.visibleFrame
             ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
 

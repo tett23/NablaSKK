@@ -125,6 +125,11 @@
   しかなかった(2 版目はこれで直らなかった)。
   FFI に `skk_session_set_input_mode`(エンジンの AsciiMode などのモード
   イベントを送る)を追加。
+- 注釈(本家 `enable_annotation`、既定 off も本家どおり)は「入力」ページで
+  有効化する。FFI の annotator(`SharedAnnotator`)が選択中の候補の注釈を
+  保持し(`skk_session_annotation`)、IME の `AnnotationWindow` がキャレットの
+  下に小さな箱で出す。本家は macOS の辞書(DCSCopyTextDefinition)の定義も
+  併記し 1 秒遅れて表示するが、こちらは辞書ファイルの注釈だけを即時に出す。
 - サジェスト(本家の動的補完 `enable_dynamic_completion`)を実装。エンジンは
   既に `DynamicCompletor` を呼んでいたので FFI に `SharedCompletor` を足して
   補完一覧・共通接頭辞長を公開し(`skk_session_completion_*`)、IME 側の
