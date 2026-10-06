@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/nablaskk-core", "crates/skkserv", "crates/skk-cli", "crates/nablaskk-ffi"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 license = "GPL-2.0-or-later"
 repository = "https://github.com/tett23/NablaSKK"
