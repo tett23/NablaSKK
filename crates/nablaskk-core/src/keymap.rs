@@ -346,6 +346,52 @@ mod tests {
         );
     }
 
+    /// The shipped keymap with an AquaSKK sub-rule keymap merged on top
+    /// (ADR 0003): `load`, not `load_replacing`.
+    fn shipped_with(patch: &str) -> Keymap {
+        let mut keymap = Keymap::new();
+        keymap.load(include_str!("../../../data/keymap.conf"));
+        keymap.load(patch);
+        keymap
+    }
+
+    #[test]
+    fn azik_keymap_patch() {
+        let keymap = shipped_with(include_str!("../../../data/azik.conf"));
+
+        // q is a plain key (AZIK types ん with it); ToggleKana moved to keycode 0x21
+        assert_eq!(keymap.fetch(b'q', 0, 0), Event::new(EventId::Char, b'q', INPUT_CHARS));
+        assert_eq!(keymap.fetch(b'q', 0, CTRL), Event::new(EventId::Char, b'q', 0));
+        assert_eq!(
+            keymap.fetch(b'@', 0x21, 0),
+            Event::new(EventId::Char, b'@', TOGGLE_KANA | INPUT_CHARS)
+        );
+        assert_eq!(keymap.fetch(b'@', 0x21, CTRL).attribute, TOGGLE_JISX0201_KANA);
+        // Shift+; (keycode 0x29) starts a reading, like the letters still do
+        assert_eq!(
+            keymap.fetch(b'+', 0x29, SHIFT),
+            Event::new(EventId::Char, b'+', UPPER_CASES | INPUT_CHARS)
+        );
+        assert_eq!(
+            keymap.fetch(b'A', 0, 0),
+            Event::new(EventId::Char, b'A', UPPER_CASES | INPUT_CHARS)
+        );
+        // untouched bindings
+        assert_eq!(keymap.fetch(b'j', 0, CTRL), Event::new(EventId::JMode, b'j', 0));
+        assert_eq!(keymap.fetch(b'l', 0, 0).attribute & SWITCH_TO_ASCII, SWITCH_TO_ASCII);
+    }
+
+    #[test]
+    fn act_keymap_patch() {
+        let keymap = shipped_with(include_str!("../../../data/act.conf"));
+
+        assert_eq!(keymap.fetch(b'q', 0, 0), Event::new(EventId::Char, b'q', INPUT_CHARS));
+        assert_eq!(keymap.fetch(b'\\', 0, 0).attribute & TOGGLE_KANA, TOGGLE_KANA);
+        assert_eq!(keymap.fetch(b'|', 0, 0).attribute & ENTER_JAPANESE, ENTER_JAPANESE);
+        assert_eq!(keymap.fetch(b'Q', 0, 0).attribute & ENTER_JAPANESE, 0);
+        assert_eq!(keymap.fetch(b'j', 0, CTRL), Event::new(EventId::JMode, b'j', 0));
+    }
+
     #[test]
     fn load_replacing_rebinds() {
         let mut keymap = keymap();

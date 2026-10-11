@@ -84,6 +84,12 @@ public final class SKKSession {
         skk_session_reset_keymap(session)
     }
 
+    /// Merge keymap.conf-format text into the keymap (adds keys; "Not..."
+    /// lines remove attributes), as AquaSKK applies sub-rule keymaps.
+    public func patchKeymap(_ text: String) {
+        text.withCString { skk_session_patch_keymap(session, $0) }
+    }
+
     /// Rebind keys from keymap.conf-format text; each line replaces every
     /// key currently bound to its symbol.
     public func overrideKeymap(_ text: String) {
