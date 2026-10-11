@@ -34,7 +34,7 @@ struct KeymapSettingsView: View {
                  + "文字コードは hex::0x1b、キーコードは keycode::7b、複数のキーは || で区切ります。"
                  + "空にするとデフォルトに戻ります。")
                 .font(.callout)
-                .foregroundColor(.secondary)
+                .foregroundColor(.prefSecondary)
 
             HStack(spacing: 12) {
                 Text("操作").frame(width: KeymapRow.labelWidth, alignment: .leading)
@@ -42,8 +42,8 @@ struct KeymapSettingsView: View {
                 Spacer()
                 Text("").frame(width: KeymapRow.resetWidth)
             }
-            .font(.caption)
-            .foregroundColor(.secondary)
+            .font(.subheadline)
+            .foregroundColor(.prefSecondary)
             .padding(.horizontal, 8)
 
             List {
@@ -57,11 +57,11 @@ struct KeymapSettingsView: View {
                     .disabled(store.settings.overrides.isEmpty)
                 Spacer()
                 if let error = store.saveError {
-                    Text("保存できません: \(error)").foregroundColor(.red).font(.callout)
+                    Text("保存できません: \(error)").foregroundColor(.prefError).font(.callout)
                 } else {
                     Text("変更は次にどこかのアプリで入力を始めたときに反映されます。")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .foregroundColor(.prefSecondary)
                 }
             }
         }
@@ -86,18 +86,28 @@ struct KeymapRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(action.label)
-                Text(action.symbol).font(.caption2).foregroundColor(.secondary)
+                Text(action.symbol).font(.caption2).foregroundColor(.prefSecondary)
             }
             .frame(width: Self.labelWidth, alignment: .leading)
 
-            TextField(action.defaultKeys, text: $text, onCommit: commit)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(.body, design: .monospaced))
-                .foregroundColor(isValid ? .primary : .red)
-                .help(isValid ? "デフォルト: \(action.defaultKeys)" : "書き方が正しくありません")
-                .onChange(of: text) { _ in
-                    if isValid { commit() }
+            // An invalid spec is said in words under the field (ADR 0006)
+            VStack(alignment: .leading, spacing: 2) {
+                TextField(action.defaultKeys, text: $text, onCommit: commit)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+                    .overlay(RoundedRectangle(cornerRadius: 5)
+                        .stroke(isValid ? Color.clear : Color.prefError, lineWidth: 1.5))
+                    .help("デフォルト: \(action.defaultKeys)")
+                    .accessibilityLabel(PreferencesAccessibility.keyField(action.label))
+                    .onChange(of: text) { _ in
+                        if isValid { commit() }
+                    }
+                if !isValid {
+                    Text("書き方が正しくありません(例: ctrl::j、hex::0x1b)")
+                        .font(.subheadline)
+                        .foregroundColor(.prefError)
                 }
+            }
 
             Button(action: { text = ""; commit() }) {
                 Image(systemName: "arrow.uturn.backward")
@@ -106,6 +116,7 @@ struct KeymapRow: View {
             .frame(width: Self.resetWidth)
             .disabled(!isOverridden)
             .help("デフォルト (\(action.defaultKeys)) に戻す")
+            .accessibilityLabel(PreferencesAccessibility.resetKey(action.label))
         }
         .padding(.vertical, 2)
         .onAppear { text = store.settings.overrides[action.symbol] ?? "" }

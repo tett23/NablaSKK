@@ -134,7 +134,7 @@ struct SidebarItem: View {
             .foregroundColor(isSelected ? .white : .primary)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected ? Color.accentColor
+                    .fill(isSelected ? Color.prefSidebarSelection
                           : hovering ? Color.primary.opacity(0.08) : Color.clear)
             )
             .contentShape(Rectangle())
@@ -310,30 +310,38 @@ struct DictionaryListView: View {
             Text("辞書は上から順に検索されます。ファイルをここにドラッグ&ドロップすると "
                  + "~/Library/Application Support/NablaSKK/dictionaries にコピーして追加します。")
                 .font(.callout)
-                .foregroundColor(.secondary)
+                .foregroundColor(.prefSecondary)
 
             HStack(spacing: 12) {
-                Text("").frame(width: DictionaryRow.toggleWidth)
+                Text("").frame(width: DictionaryRow.handleWidth + DictionaryRow.toggleWidth + 12)
                 Text("名前").frame(width: DictionaryRow.nameWidth, alignment: .leading)
                 Text("種類").frame(width: DictionaryRow.kindWidth, alignment: .leading)
                 Text("場所")
                 Spacer()
             }
-            .font(.caption)
-            .foregroundColor(.secondary)
-            .padding(.horizontal, 8)
+            .font(.subheadline)
+            .foregroundColor(.prefSecondary)
+            .padding(.horizontal, 12)
+            .accessibilityHidden(true)
 
-            List(selection: $selection) {
-                ForEach($store.entries) { $entry in
-                    DictionaryRow(entry: $entry)
+            // A ScrollView, not a selectable List: in a List the first click
+            // on a location field selected the row instead (ADR 0006)
+            ScrollView {
+                VStack(spacing: 2) {
+                    ForEach($store.entries) { $entry in
+                        DictionaryRow(entry: $entry)
+                            .selectableRow(id: entry.id, selection: $selection)
+                            .onDrop(of: [.text], delegate: ReorderDropDelegate(target: entry.id, items: $store.entries))
+                    }
                 }
-                .onMove { from, to in
-                    store.entries.move(fromOffsets: from, toOffset: to)
-                }
+                .padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .background(Color(nsColor: .textBackgroundColor))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(dropTargeted ? Color.accentColor : Color.clear, lineWidth: 2)
+                    .stroke(dropTargeted ? Color.accentColor : Color(nsColor: .separatorColor),
+                            lineWidth: dropTargeted ? 2 : 1)
             )
             .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
                 loadDroppedFiles(providers)
@@ -352,32 +360,36 @@ struct DictionaryListView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 40)
+                .accessibilityLabel(PreferencesAccessibility.addDictionary)
 
                 Button(action: { store.remove(selection); selection.removeAll() }) {
                     Image(systemName: "minus")
                 }
                 .disabled(selection.isEmpty)
+                .accessibilityLabel(PreferencesAccessibility.removeDictionary)
 
                 Button(action: { store.move(selection, by: -1) }) {
                     Image(systemName: "arrow.up")
                 }
                 .disabled(selection.count != 1)
+                .accessibilityLabel(PreferencesAccessibility.moveDictionaryUp)
 
                 Button(action: { store.move(selection, by: 1) }) {
                     Image(systemName: "arrow.down")
                 }
                 .disabled(selection.count != 1)
+                .accessibilityLabel(PreferencesAccessibility.moveDictionaryDown)
 
                 Spacer()
 
                 if let error = store.saveError {
                     Text("保存できません: \(error)")
-                        .foregroundColor(.red)
+                        .foregroundColor(.prefError)
                         .font(.callout)
                 } else {
                     Text(DictionaryConfig.fileURL.path)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .foregroundColor(.prefSecondary)
                         .truncationMode(.middle)
                         .lineLimit(1)
                 }
@@ -409,6 +421,7 @@ struct DictionaryListView: View {
 }
 
 struct DictionaryRow: View {
+    static let handleWidth: CGFloat = 16
     static let toggleWidth: CGFloat = 20
     static let nameWidth: CGFloat = 160
     static let kindWidth: CGFloat = 250
@@ -416,17 +429,23 @@ struct DictionaryRow: View {
     @Binding var entry: DictionaryEntry
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
+            ReorderHandle(id: entry.id)
+                .frame(width: Self.handleWidth)
+
             Toggle("", isOn: $entry.enabled)
                 .labelsHidden()
                 .frame(width: Self.toggleWidth)
                 .help("チェックを外すと検索対象から外れます")
+                .accessibilityLabel(PreferencesAccessibility.dictionaryEnabled(entry.name))
 
             Text(entry.name)
                 .frame(width: Self.nameWidth, alignment: .leading)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .help(entry.name)
+                .padding(.top, 3)
+                // Clicks reach the row behind, which selects it
+                .allowsHitTesting(false)
 
             Picker("", selection: $entry.kind) {
                 ForEach(DictionaryEntry.Kind.allCases) { kind in
@@ -435,15 +454,26 @@ struct DictionaryRow: View {
             }
             .labelsHidden()
             .frame(width: Self.kindWidth)
+            .accessibilityLabel(PreferencesAccessibility.dictionaryKind(entry.name))
 
             if entry.kind.needsLocation {
-                TextField(entry.kind.locationHint, text: $entry.location)
-                    .textFieldStyle(.roundedBorder)
-                    .foregroundColor(locationExists ? .primary : .red)
-                    .help(locationExists ? entry.location : "ファイルが見つかりません")
+                // A missing file is said in words, not only by colour (ADR 0006)
+                VStack(alignment: .leading, spacing: 2) {
+                    TextField(entry.kind.locationHint, text: $entry.location)
+                        .textFieldStyle(.roundedBorder)
+                        .overlay(RoundedRectangle(cornerRadius: 5)
+                            .stroke(locationExists ? Color.clear : Color.prefError, lineWidth: 1.5))
+                        .help(entry.location)
+                        .accessibilityLabel(PreferencesAccessibility.dictionaryLocation(entry.name))
+                    if !locationExists {
+                        Text("ファイルが見つかりません").font(.subheadline).foregroundColor(.prefError)
+                    }
+                }
             } else {
                 Text(entry.kind.locationHint)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.prefSecondary)
+                    .padding(.top, 3)
+                    .allowsHitTesting(false)
                 Spacer()
             }
         }

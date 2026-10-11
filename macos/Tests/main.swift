@@ -564,6 +564,36 @@ do {
     check(overridden.inputMode == .katakana, "sub-rules: ...with the user's key")
 }
 
+// Preferences accessibility labels and drag reordering (ADR 0006)
+do {
+    typealias L = PreferencesAccessibility
+    check(L.addDictionary == "辞書を追加" && L.removeDictionary == "選択した辞書を削除"
+          && L.moveDictionaryUp == "選択した辞書を上へ" && L.moveDictionaryDown == "選択した辞書を下へ",
+          "a11y labels: dictionary buttons")
+    check(L.addEntry == "見出し語を追加" && L.removeEntry == "選択した見出し語を削除"
+          && L.addCandidate == "候補を追加" && L.removeCandidate == "選択した候補を削除"
+          && L.moveCandidateUp == "選択した候補を上へ" && L.moveCandidateDown == "選択した候補を下へ",
+          "a11y labels: user dictionary buttons")
+    check(L.dictionaryEnabled("SKK-JISYO.L") == "SKK-JISYO.Lを検索に使う"
+          && L.dictionaryKind("SKK-JISYO.L") == "SKK-JISYO.Lの種類"
+          && L.dictionaryLocation("SKK-JISYO.L") == "SKK-JISYO.Lの場所",
+          "a11y labels: dictionary row controls carry the dictionary name")
+    check(L.resetKey("かなモードへ") == "「かなモードへ」をデフォルトに戻す" && L.keyField("かなモードへ") == "かなモードへのキー",
+          "a11y labels: key page")
+    check(L.deleteRule(input: "fj", output: "、") == "「fj → 、」のルールを削除"
+          && L.deleteRule(input: "", output: "") == "空のルールを削除"
+          && L.ruleInput(2) == "2 番目のルールの入力キー" && L.ruleOutput(2) == "2 番目のルールの出力"
+          && L.builtinRule(input: "z.", output: "…") == "z. を打つと …",
+          "a11y labels: romaji rules")
+
+    let items = ["a", "b", "c", "d"]
+    check(ListReorder.moved(items, from: 0, to: 2) == ["b", "c", "a", "d"], "reorder: drop a on c's row puts it there")
+    check(ListReorder.moved(items, from: 3, to: 0) == ["d", "a", "b", "c"], "reorder: drop d on the first row")
+    check(ListReorder.moved(items, from: 1, to: 1) == items, "reorder: dropping on itself changes nothing")
+    check(ListReorder.moved(items, from: 9, to: 0) == items && ListReorder.moved(items, from: 0, to: 9) == items,
+          "reorder: out-of-range indices change nothing")
+}
+
 // Input mode can be set directly (used to restore a client's ASCII mode)
 do {
     let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-mode-test")

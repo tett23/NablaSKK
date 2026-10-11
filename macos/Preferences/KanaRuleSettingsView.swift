@@ -103,7 +103,7 @@ struct KanaRuleSettingsView: View {
                  + "例えば入力キーを「fj」、出力を「、」にすると、fj で読点を打てます。"
                  + "カタカナ・半角カナモードでは出力をカタカナ・半角に変えて使います。")
                 .font(.callout)
-                .foregroundColor(.secondary)
+                .foregroundColor(.prefSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             ScrollView {
@@ -111,11 +111,12 @@ struct KanaRuleSettingsView: View {
                     sectionHeader("追加したルール")
                     if store.settings.rules.isEmpty {
                         Text("まだありません。下の + で追加できます。")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.prefSecondary)
                             .padding(.vertical, 4)
                     }
                     ForEach($store.settings.rules) { $rule in
-                        KanaRuleRow(rule: $rule, issue: issues[rule.id], focus: $focusedRule) {
+                        KanaRuleRow(rule: $rule, number: (store.settings.rules.firstIndex { $0.id == rule.id } ?? 0) + 1,
+                                    issue: issues[rule.id], focus: $focusedRule) {
                             store.remove(rule.id)
                         }
                     }
@@ -140,11 +141,11 @@ struct KanaRuleSettingsView: View {
                 }
                 Spacer()
                 if let error = store.saveError {
-                    Text("保存できません: \(error)").foregroundColor(.red).font(.callout)
+                    Text("保存できません: \(error)").foregroundColor(.prefError).font(.callout)
                 } else {
                     Text("赤い注意が出ている行は保存されません。変更は次にどこかのアプリで入力を始めたときに反映されます。")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .foregroundColor(.prefSecondary)
                 }
             }
         }
@@ -164,26 +165,26 @@ struct KanaRuleSettingsView: View {
             .pickerStyle(.radioGroup)
             .horizontalRadioGroupLayout()
             Text(settings.inputStyle.summary)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.subheadline)
+                .foregroundColor(.prefSecondary)
             HStack(spacing: 16) {
                 Toggle("記号入力(SKK日本語入力FEP/Egg 互換。z1 → ○ など)", isOn: $inputStore.settings.yakumonoIppai)
                 Toggle("旧かな(ゐ・ゑ・くゎ・ぐゎ)", isOn: $inputStore.settings.oldKana)
             }
             if settings.inputStyle == .act && (settings.yakumonoIppai || settings.oldKana) {
                 Text("ACT と併用すると、一部のキーは記号入力・旧かなのほうになります(例: z; は ACT の「ざん」ではなく「゛」、wi は「ゐ」)。")
-                    .font(.caption)
-                    .foregroundColor(.orange)
+                    .font(.subheadline)
+                    .foregroundColor(.prefWarning)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if settings.inputStyle != .standard {
                 Text("ひらがな⇔カタカナなどのキーも入力方式に合わせて変わりますが、「キー」ページの既定の表示は標準のままです。")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                    .foregroundColor(.prefSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let error = inputStore.saveError {
-                Text("保存できません: \(error)").foregroundColor(.red).font(.callout)
+                Text("保存できません: \(error)").foregroundColor(.prefError).font(.callout)
             }
         }
         .onChange(of: inputStore.settings) { store.useSubRules(of: $0) }
@@ -207,6 +208,8 @@ struct KanaRuleSettingsView: View {
 /// stands out in a long list.
 struct KanaRuleRow: View {
     @Binding var rule: KanaRule
+    /// 1-based position, for VoiceOver names
+    let number: Int
     let issue: KanaRuleIssue?
     var focus: FocusState<UUID?>.Binding
     let onDelete: () -> Void
@@ -220,36 +223,40 @@ struct KanaRuleRow: View {
                     .frame(width: KanaRuleSettingsView.inputWidth)
                     .overlay(errorOutline(issue?.field == .input))
                     .focused(focus, equals: rule.id)
+                    .accessibilityLabel(PreferencesAccessibility.ruleInput(number))
                 Image(systemName: "arrow.right")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.prefSecondary)
                     .frame(width: 14)
+                    .accessibilityHidden(true)
                 TextField("、", text: $rule.output)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: KanaRuleSettingsView.outputWidth)
                     .overlay(errorOutline(issue?.field == .output))
+                    .accessibilityLabel(PreferencesAccessibility.ruleOutput(number))
                 Button(action: onDelete) {
                     Image(systemName: "trash")
                 }
                 .buttonStyle(.borderless)
                 .help("このルールを削除")
+                .accessibilityLabel(PreferencesAccessibility.deleteRule(input: rule.input, output: rule.output))
                 Spacer(minLength: 0)
             }
             if let issue {
-                Text("\(issue.message)(保存されません)").font(.caption).foregroundColor(.red)
+                Text("\(issue.message)(保存されません)").font(.subheadline).foregroundColor(.prefError)
             }
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(issue == nil ? Color.clear : Color.red.opacity(0.08))
+                .fill(issue == nil ? Color.clear : Color.prefErrorRow)
         )
     }
 
     @ViewBuilder
     private func errorOutline(_ show: Bool) -> some View {
         if show {
-            RoundedRectangle(cornerRadius: 5).stroke(Color.red, lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 5).stroke(Color.prefError, lineWidth: 1.5)
         }
     }
 }
@@ -264,22 +271,26 @@ struct BuiltinKanaRuleRow: View {
             .replacingOccurrences(of: "\u{3000}", with: "(全角スペース)")
     }
 
+    /// Plain text, not disabled fields: the content is meant to be read
+    /// (disabled fields fell to 1.8:1 contrast), read as one sentence
+    /// ("z. を打つと …") by VoiceOver (ADR 0006).
     var body: some View {
         HStack(spacing: 12) {
-            TextField("", text: .constant(Self.visible(rule.input)))
-                .textFieldStyle(.roundedBorder)
+            Text(Self.visible(rule.input))
                 .font(.system(.body, design: .monospaced))
-                .frame(width: KanaRuleSettingsView.inputWidth)
+                .frame(width: KanaRuleSettingsView.inputWidth, alignment: .leading)
+                .padding(.leading, 7)
             Image(systemName: "arrow.right")
-                .foregroundColor(.secondary)
+                .foregroundColor(.prefSecondary)
                 .frame(width: 14)
-            TextField("", text: .constant(Self.visible(rule.output)))
-                .textFieldStyle(.roundedBorder)
-                .frame(width: KanaRuleSettingsView.outputWidth)
+            Text(Self.visible(rule.output))
+                .frame(width: KanaRuleSettingsView.outputWidth, alignment: .leading)
+                .padding(.leading, 7)
             Spacer(minLength: 0)
         }
-        .disabled(true)
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
         .padding(.horizontal, 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(PreferencesAccessibility.builtinRule(input: Self.visible(rule.input), output: Self.visible(rule.output)))
     }
 }
