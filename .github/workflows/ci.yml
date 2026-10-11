@@ -43,6 +43,9 @@ jobs:
       - name: macOS key translation tests
         if: runner.os == 'macOS'
         run: sh macos/run-tests.sh
+      - name: Preferences app UI tests
+        if: runner.os == 'macOS'
+        run: sh macos/run-ui-tests.sh
 
   # ==================================================================
   # Build artifacts

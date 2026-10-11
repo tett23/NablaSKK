@@ -250,8 +250,10 @@ git tag v1.1.0 && git push origin v1.1.0
 ステータスの行以外を変更できません([adr-guard](https://github.com/tett23/adr-guard)
 で検査)。作業はブランチで行い、main へは `--no-ff` でマージします。
 
-クローンしたら、adr-guard を入れて git の hook を有効にしてください
-(Claude Code の hook は `.claude/settings.json` に入っています):
+クローンしたら、adr-guard を入れて git の hook を有効にしてください。
+Claude Code で編集する場合は、全体の設定(`~/.claude/settings.json`)に
+adr-guard の hook を入れてください([adr-guard の README](https://github.com/tett23/adr-guard#claude-codeのhook)
+の例のとおり。リポジトリには置いていません):
 
 ```sh
 cargo install --git https://github.com/tett23/adr-guard --tag v0.1.0
@@ -268,6 +270,14 @@ cargo test
 セッション統合テスト(変換・送りあり変換・単語登録・補完・モード切替など)に加え、
 **本家の受け入れテストスイート(SKKInputSession_TEST の test.dat、400ケース)を
 そのまま再生するパリティテスト**を含み、全ケースで本家エンジンと出力が一致します。
+
+macOS 側のテストは次のとおりです(CI の macOS ジョブでも実行します):
+
+```sh
+sh swift/run-smoke-test.sh   # Swift ↔ FFI のスモークテスト
+sh macos/run-tests.sh        # キー変換・設定ファイル・ユーザー辞書など
+sh macos/run-ui-tests.sh     # 設定アプリの UI(画面外のウィンドウ。利用者の設定には触れない)
+```
 
 ## 本家との差分
 

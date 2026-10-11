@@ -56,9 +56,7 @@ struct RootView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(SettingsPane.allCases) { item in
-                    SidebarItem(pane: item, isSelected: item == pane) {
-                        selectedPane = item.rawValue
-                    }
+                    SidebarItem(pane: item, selection: $selectedPane)
                 }
                 Spacer()
             }
@@ -109,15 +107,22 @@ struct SidebarBackground: NSViewRepresentable {
 }
 
 /// One sidebar row; the selected row gets an accent-coloured background.
+///
+/// The row reads the selection itself rather than taking an `isSelected`
+/// Bool next to an action closure: with the closure SwiftUI could not
+/// compare rows and skipped their bodies, so only the first click moved
+/// the highlight (ADR 0005).
 struct SidebarItem: View {
     let pane: SettingsPane
-    let isSelected: Bool
-    let action: () -> Void
+    /// The selected pane's raw value (`@AppStorage("selectedSettingsPane")`).
+    @Binding var selection: String
 
     @State private var hovering = false
 
+    private var isSelected: Bool { selection == pane.rawValue }
+
     var body: some View {
-        Button(action: action) {
+        Button(action: { selection = pane.rawValue }) {
             HStack(spacing: 8) {
                 Image(systemName: pane.systemImage)
                     .frame(width: 20)
