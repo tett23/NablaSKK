@@ -17,13 +17,15 @@ extern "C" {
 
 typedef struct SkkSession SkkSession;
 
-/* Dictionary types (DictionarySet numbering of the original AquaSKK). */
+/* Dictionary types: the original AquaSKK's DictionarySet numbering;
+ * 6 is a NablaSKK addition. */
 enum {
     SKK_DICT_COMMON = 0,      /* SKK-JISYO, EUC-JP / UTF-8 auto-detected */
     SKK_DICT_AUTO_UPDATE = 1, /* "host url path", downloaded over HTTP */
-    SKK_DICT_PROXY = 2,       /* "host:port" of a running skkserv */
+    SKK_DICT_PROXY = 2,       /* "host:port" of a running skkserv (EUC-JP) */
     SKK_DICT_GADGET = 4,      /* today/now/=expr dynamic candidates */
-    SKK_DICT_COMMON_UTF8 = 5  /* SKK-JISYO, UTF-8 */
+    SKK_DICT_COMMON_UTF8 = 5, /* SKK-JISYO, UTF-8 */
+    SKK_DICT_PROXY_UTF8 = 6   /* "host:port" of a running skkserv speaking UTF-8 (NablaSKK addition) */
 };
 
 /* Modifier bits for skk_session_handle (matches keymap.conf). */
