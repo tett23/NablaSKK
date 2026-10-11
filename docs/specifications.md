@@ -147,7 +147,8 @@ C ABI。正は `crates/nablaskk-ffi/include/nablaskk.h`、Swift ラッパーは
 
 - 設計判断は実装の前に `docs/adr/` に ADR として書き、レビューを受けてから
   コミットする。コミット済みの ADR はステータスの行以外を変えない(adr-guard が
-  pre-commit hook・Claude Code の hook・CI で検査する)。
+  git の pre-commit hook と CI で検査する。Claude Code の hook は利用者の全体の設定
+  `~/.claude/settings.json` で入れる)。
 - 作業はブランチで行い、main へは `--no-ff` でマージする。main を rebase しない。
 - `v` で始まるタグを push すると CI がリリースの下書きを作る。タグ名に `-` を
   含む場合(`v1.1.0-rc` など)はプレリリースになる。リリースノートには追加・削除した
