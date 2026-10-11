@@ -24,4 +24,7 @@ grep -q "@main" "$work/PreferencesApp.swift" && { echo "could not remove @main";
 cp macos/Tests/PreferencesUITests/main.swift "$work/main.swift"
 
 swiftc "$work"/*.swift -framework SwiftUI -framework Cocoa -o "$work/preferences-ui-tests"
+# Resources the app bundles (Bundle.main of a plain executable is its directory)
+cp data/kana-rule.utf8.conf data/azik.rule data/azik_us.rule data/act.rule data/azik.conf data/act.conf \
+    data/yakumono-ippai.rule data/old-kana.rule "$work/"
 "$work/preferences-ui-tests"

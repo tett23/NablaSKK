@@ -34,6 +34,9 @@ PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
     macos/Shared/KeymapConfig.swift \
     macos/Shared/KanaRuleConfig.swift \
     macos/Shared/SubRules.swift \
+    macos/Shared/PreferencesAccessibility.swift \
+    macos/Preferences/PreferencesPalette.swift \
+    macos/Preferences/ReorderableRows.swift \
     macos/Preferences/PreferencesApp.swift \
     macos/Preferences/UserDictionaryView.swift \
     macos/Preferences/InputSettingsView.swift \
