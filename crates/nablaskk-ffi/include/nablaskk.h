@@ -63,6 +63,9 @@ void skk_session_patch_kana_rules(SkkSession *session, const char *rules);
 
 /* Restore the built-in keymap, dropping applied overrides. */
 void skk_session_reset_keymap(SkkSession *session);
+/* Merge keymap.conf-format text into the keymap (adds keys; "Not..."
+ * lines remove attributes), as AquaSKK applies sub-rule keymaps. */
+void skk_session_patch_keymap(SkkSession *session, const char *text);
 /* Rebind keys from keymap.conf-format text; each line replaces every key
  * currently bound to its symbol. */
 void skk_session_override_keymap(SkkSession *session, const char *text);

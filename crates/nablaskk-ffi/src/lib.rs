@@ -260,6 +260,21 @@ pub unsafe extern "C" fn skk_session_reset_keymap(session: *mut SkkSession) {
     session.keymap = keymap;
 }
 
+/// Merge keymap.conf-format text into the current keymap, as AquaSKK
+/// patches its sub-rule keymaps (azik.conf, act.conf): lines add keys,
+/// "Not..." lines remove an attribute. Unlike
+/// `skk_session_override_keymap`, existing keys of a symbol are kept.
+///
+/// # Safety
+/// `session` must be a valid session pointer; `text` a valid C string.
+#[no_mangle]
+pub unsafe extern "C" fn skk_session_patch_keymap(session: *mut SkkSession, text: *const c_char) {
+    let Some(session) = session.as_mut() else { return };
+    let Some(text) = cstr(text) else { return };
+
+    session.keymap.load(text);
+}
+
 /// Rebind keys from keymap.conf-format text: each line replaces every
 /// key currently bound to its symbol (e.g. `SKK_JMODE ctrl::k` makes
 /// Ctrl-K the only kana-mode key). Used by the preferences app.
@@ -650,5 +665,47 @@ pub unsafe extern "C" fn skk_session_set_option(
 pub unsafe extern "C" fn skk_string_free(str_: *mut c_char) {
     if !str_.is_null() {
         drop(CString::from_raw(str_));
+    }
+}
+
+#[cfg(test)]
+mod keymap_patch_tests {
+    use super::*;
+
+    unsafe fn mode_after_toggle(session: *mut SkkSession, charcode: u8, keycode: u8) -> i32 {
+        skk_session_set_input_mode(session, 0);
+        skk_session_handle(session, charcode, keycode, 0);
+        skk_session_input_mode(session)
+    }
+
+    /// ADR 0003: sub-rule keymaps are merged, and reset restores the shipped keymap.
+    #[test]
+    fn patch_keymap_merges_and_reset_restores() {
+        unsafe {
+            let path = CString::new(std::env::temp_dir().join("nablaskk-ffi-keymap-patch").to_str().unwrap()).unwrap();
+            let session = skk_session_new(path.as_ptr());
+
+            // Shipped: q toggles katakana
+            assert_eq!(mode_after_toggle(session, b'q', 0), 1);
+
+            let azik = CString::new(include_str!("../../../data/azik.conf")).unwrap();
+            skk_session_patch_keymap(session, azik.as_ptr());
+            assert_eq!(mode_after_toggle(session, b'@', 0x21), 1, "AZIK: the @ key toggles");
+            skk_session_clear(session);
+            assert_ne!(mode_after_toggle(session, b'q', 0), 1, "AZIK: q no longer toggles");
+            skk_session_clear(session);
+            // Letters still start a reading (UpperCases kept, not replaced)
+            skk_session_set_input_mode(session, 0);
+            skk_session_handle(session, b'K', 0, 0);
+            let composing = skk_session_composing(session);
+            assert_eq!(CStr::from_ptr(composing).to_str().unwrap(), "▽k");
+            skk_string_free(composing);
+            skk_session_clear(session);
+
+            skk_session_reset_keymap(session);
+            assert_eq!(mode_after_toggle(session, b'q', 0), 1, "reset restores q");
+
+            skk_session_free(session);
+        }
     }
 }

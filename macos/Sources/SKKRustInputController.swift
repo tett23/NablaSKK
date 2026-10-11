@@ -38,9 +38,17 @@ enum Engine {
         applyKeymap(to: session)
     }
 
+    /// AquaSKK's sub-rule files (ADR 0003), bundled in Resources.
+    static var subRuleDirectory: URL { Bundle.main.resourceURL ?? Bundle.main.bundleURL }
+
+    /// Built-in keymap, then the input style's keymap patch (merged, as
+    /// AquaSKK does), then the user's keymap.conf overrides.
     private static func applyKeymap(to session: SKKSession) {
         loadedKeymapDate = KeymapSettings.modificationDate
         session.resetKeymap()
+        if let patch = SubRules.keymapText(for: InputSettings.load(), in: subRuleDirectory) {
+            session.patchKeymap(patch)
+        }
         let overrides = KeymapSettings.load().overrideText
         if !overrides.isEmpty {
             session.overrideKeymap(overrides)
@@ -58,17 +66,23 @@ enum Engine {
         }
         guard InputSettings.modificationDate != loadedSettingsDate else { return }
         applyInputSettings(to: session)
+        // The input style also patches the keymap
+        applyKeymap(to: session)
         session.clearDictionaries()
         loadDictionaries(into: session)
     }
 
     private static var loadedKanaRulesDate: Date?
 
-    /// Built-in rules, then the punctuation sub-rules from settings.conf,
-    /// then the user's kana-rule.conf (so user rules win).
+    /// Built-in rules, then the sub-rules (input style, yakumono-ippai,
+    /// old-kana in AquaSKK's order), then the punctuation options, then
+    /// the user's kana-rule.conf (ADR 0003: what the user set wins).
     private static func applyKanaRules(to session: SKKSession, settings: InputSettings) {
         loadedKanaRulesDate = KanaRuleSettings.modificationDate
         session.resetKanaRules()
+        if let subRules = SubRules.ruleText(for: settings, in: subRuleDirectory) {
+            session.patchKanaRules(subRules)
+        }
         if !settings.kanaRulePatch.isEmpty {
             session.patchKanaRules(settings.kanaRulePatch)
         }
