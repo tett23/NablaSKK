@@ -70,4 +70,54 @@ precondition(session.inputMode == .hirakana, "back to hirakana")
 print("ok   input mode switching")
 
 session.save()
+// The header's constants and the Swift wrapper's enums must agree
+// (ADR 0002: SKK_DICT_PROXY_UTF8 was missing from the header)
+func assertSame(_ header: some BinaryInteger, _ swift: Int32, _ label: String) {
+    guard Int64(header) == Int64(swift) else {
+        print("FAIL \(label): header \(header), Swift \(swift)")
+        exit(1)
+    }
+}
+let dictionaryTypes: [(Int64, SKKSession.DictionaryType, String)] = [
+    (Int64(SKK_DICT_COMMON), .common, "SKK_DICT_COMMON"),
+    (Int64(SKK_DICT_AUTO_UPDATE), .autoUpdate, "SKK_DICT_AUTO_UPDATE"),
+    (Int64(SKK_DICT_PROXY), .proxy, "SKK_DICT_PROXY"),
+    (Int64(SKK_DICT_GADGET), .gadget, "SKK_DICT_GADGET"),
+    (Int64(SKK_DICT_COMMON_UTF8), .commonUTF8, "SKK_DICT_COMMON_UTF8"),
+    (Int64(SKK_DICT_PROXY_UTF8), .proxyUTF8, "SKK_DICT_PROXY_UTF8"),
+]
+for (header, type, label) in dictionaryTypes { assertSame(header, type.rawValue, label) }
+let inputModes: [(Int64, SKKSession.InputMode, String)] = [
+    (Int64(SKK_MODE_HIRAKANA), .hirakana, "SKK_MODE_HIRAKANA"),
+    (Int64(SKK_MODE_KATAKANA), .katakana, "SKK_MODE_KATAKANA"),
+    (Int64(SKK_MODE_JISX0201KANA), .jisx0201kana, "SKK_MODE_JISX0201KANA"),
+    (Int64(SKK_MODE_ASCII), .ascii, "SKK_MODE_ASCII"),
+    (Int64(SKK_MODE_JISX0208LATIN), .jisx0208latin, "SKK_MODE_JISX0208LATIN"),
+]
+for (header, mode, label) in inputModes { assertSame(header, mode.rawValue, label) }
+let options: [(Int64, SKKSession.Option, String)] = [
+    (Int64(SKK_OPTION_SUPPRESS_NEWLINE_ON_COMMIT), .suppressNewlineOnCommit, "SKK_OPTION_SUPPRESS_NEWLINE_ON_COMMIT"),
+    (Int64(SKK_OPTION_INLINE_BACKSPACE_IMPLIES_COMMIT), .inlineBackspaceImpliesCommit, "SKK_OPTION_INLINE_BACKSPACE_IMPLIES_COMMIT"),
+    (Int64(SKK_OPTION_DELETE_OKURI_WHEN_QUIT), .deleteOkuriWhenQuit, "SKK_OPTION_DELETE_OKURI_WHEN_QUIT"),
+    (Int64(SKK_OPTION_HANDLE_RECURSIVE_ENTRY_AS_OKURI), .handleRecursiveEntryAsOkuri, "SKK_OPTION_HANDLE_RECURSIVE_ENTRY_AS_OKURI"),
+    (Int64(SKK_OPTION_FIX_INTERMEDIATE_CONVERSION), .fixIntermediateConversion, "SKK_OPTION_FIX_INTERMEDIATE_CONVERSION"),
+    (Int64(SKK_OPTION_DISPLAY_SHORTEST_MATCH), .displayShortestMatch, "SKK_OPTION_DISPLAY_SHORTEST_MATCH"),
+    (Int64(SKK_OPTION_USE_NUMERIC_CONVERSION), .useNumericConversion, "SKK_OPTION_USE_NUMERIC_CONVERSION"),
+    (Int64(SKK_OPTION_MAX_INLINE_CANDIDATES), .maxInlineCandidates, "SKK_OPTION_MAX_INLINE_CANDIDATES"),
+    (Int64(SKK_OPTION_ENABLE_DYNAMIC_COMPLETION), .enableDynamicCompletion, "SKK_OPTION_ENABLE_DYNAMIC_COMPLETION"),
+    (Int64(SKK_OPTION_DYNAMIC_COMPLETION_RANGE), .dynamicCompletionRange, "SKK_OPTION_DYNAMIC_COMPLETION_RANGE"),
+    (Int64(SKK_OPTION_ENABLE_EXTENDED_COMPLETION), .enableExtendedCompletion, "SKK_OPTION_ENABLE_EXTENDED_COMPLETION"),
+    (Int64(SKK_OPTION_ENABLE_ANNOTATION), .enableAnnotation, "SKK_OPTION_ENABLE_ANNOTATION"),
+]
+for (header, option, label) in options { assertSame(header, option.rawValue, label) }
+print("ok   header constants match the Swift wrapper (\(dictionaryTypes.count + inputModes.count + options.count) values)")
+
+// An skkserv speaking UTF-8 is added even when nothing listens there
+let proxySession = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "swift-smoke-proxy-jisyo")
+guard proxySession.addDictionary(.proxyUTF8, location: "127.0.0.1:1") else {
+    print("FAIL addDictionary(.proxyUTF8) was rejected")
+    exit(1)
+}
+print("ok   addDictionary(.proxyUTF8) accepted")
+
 print("PASS all Swift FFI smoke tests")
