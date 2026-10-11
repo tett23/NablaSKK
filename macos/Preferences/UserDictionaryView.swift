@@ -137,7 +137,8 @@ struct UserDictionaryView: View {
     private var entryList: some View {
         VStack(spacing: 0) {
             HStack {
-                Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                Image(systemName: "magnifyingglass").foregroundColor(.prefSecondary)
+                    .accessibilityHidden(true)
                 TextField("読み・単語で検索", text: $search)
                     .textFieldStyle(.plain)
             }
@@ -151,8 +152,8 @@ struct UserDictionaryView: View {
                         Text(entry.reading)
                             .font(.body.weight(.medium))
                         Text(entry.candidates.map(\.word).joined(separator: "、"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.subheadline)
+                            .foregroundColor(.prefSecondary)
                             .lineLimit(1)
                     }
                     Spacer()
@@ -174,16 +175,18 @@ struct UserDictionaryView: View {
             HStack(spacing: 4) {
                 Button(action: { newReading = ""; showingAdd = true }) { Image(systemName: "plus") }
                     .help("見出し語を追加")
+                    .accessibilityLabel(PreferencesAccessibility.addEntry)
                 Button(action: {
                     if let selection { store.remove([selection]) }
                     selection = nil
                 }) { Image(systemName: "minus") }
                     .disabled(selection == nil)
                     .help("選択した見出し語を削除")
+                    .accessibilityLabel(PreferencesAccessibility.removeEntry)
                 Spacer()
                 Text("\(store.allEntries.count) 語")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                    .foregroundColor(.prefSecondary)
             }
             .buttonStyle(.borderless)
             .padding(8)
@@ -196,9 +199,10 @@ struct UserDictionaryView: View {
     private var detail: some View {
         if let error = store.loadError ?? store.saveError {
             VStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundColor(.orange)
+                Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundColor(.prefWarning)
+                    .accessibilityHidden(true)
                 Text(error).multilineTextAlignment(.center)
-                Text(UserDictionary.fileURL.path).font(.caption).foregroundColor(.secondary)
+                Text(UserDictionary.fileURL.path).font(.subheadline).foregroundColor(.prefSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
@@ -211,12 +215,13 @@ struct UserDictionaryView: View {
             VStack(spacing: 8) {
                 Image(systemName: "character.book.closed")
                     .font(.system(size: 40))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.prefSecondary)
+                    .accessibilityHidden(true)
                 Text("左の一覧から見出し語を選ぶか、＋で追加してください")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.prefSecondary)
                 Text(UserDictionary.fileURL.path)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                    .foregroundColor(.prefSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
@@ -232,8 +237,8 @@ struct UserDictionaryView: View {
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 320)
             Text(UserDictionaryEntry.isOkuriAri(reading: newReading) ? "送りあり見出し語として追加します" : "送りなし見出し語として追加します")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.subheadline)
+                .foregroundColor(.prefSecondary)
             HStack {
                 Spacer()
                 Button("キャンセル") { showingAdd = false }
@@ -257,7 +262,9 @@ struct UserDictionaryView: View {
 /// Editor for one entry: its reading and candidate list.
 struct EntryDetailView: View {
     @Binding var entry: UserDictionaryEntry
-    @State private var selectedCandidate: UUID?
+    /// At most one id; a Set to share the list row modifier
+    @State private var selectedCandidates = Set<UUID>()
+    private var selectedCandidate: UUID? { selectedCandidates.first }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -268,40 +275,48 @@ struct EntryDetailView: View {
                     .font(.title3)
                     .frame(maxWidth: 260)
                 if entry.okuriAri {
-                    Text("送りあり").font(.caption).foregroundColor(.secondary)
+                    Text("送りあり").font(.subheadline).foregroundColor(.prefSecondary)
                 }
             }
 
             HStack {
                 Text("候補").font(.headline)
-                Text("上から順に表示されます").font(.caption).foregroundColor(.secondary)
+                Text("上から順に表示されます").font(.subheadline).foregroundColor(.prefSecondary)
                 Spacer()
             }
 
-            List(selection: $selectedCandidate) {
-                ForEach($entry.candidates) { $candidate in
-                    HStack(spacing: 12) {
-                        TextField("単語", text: $candidate.word)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 220)
-                        TextField("注釈(任意)", text: $candidate.annotation)
-                            .textFieldStyle(.roundedBorder)
-                            .foregroundColor(.secondary)
+            // A ScrollView, not a selectable List: in a List the first click
+            // on a field selected the row instead (ADR 0006)
+            ScrollView {
+                VStack(spacing: 2) {
+                    ForEach($entry.candidates) { $candidate in
+                        HStack(spacing: 12) {
+                            ReorderHandle(id: candidate.id)
+                            TextField("単語", text: $candidate.word)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 220)
+                            TextField("注釈(任意)", text: $candidate.annotation)
+                                .textFieldStyle(.roundedBorder)
+                                .foregroundColor(.prefSecondary)
+                        }
+                        .selectableRow(id: candidate.id, selection: $selectedCandidates)
+                        .onDrop(of: [.text], delegate: ReorderDropDelegate(target: candidate.id, items: $entry.candidates))
                     }
-                    .padding(.vertical, 2)
-                    .tag(candidate.id)
                 }
-                .onMove { from, to in entry.candidates.move(fromOffsets: from, toOffset: to) }
+                .padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .listStyle(.bordered(alternatesRowBackgrounds: true))
+            .background(Color(nsColor: .textBackgroundColor))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor)))
 
             HStack(spacing: 4) {
                 Button(action: {
                     let candidate = UserCandidate(word: "")
                     entry.candidates.append(candidate)
-                    selectedCandidate = candidate.id
+                    selectedCandidates = [candidate.id]
                 }) { Image(systemName: "plus") }
                     .help("候補を追加")
+                    .accessibilityLabel(PreferencesAccessibility.addCandidate)
                 Button(action: {
                     guard let id = selectedCandidate else { return }
                     entry.candidates.removeAll { $0.id == id }
@@ -311,14 +326,17 @@ struct EntryDetailView: View {
                         hint.words = hint.words.filter { word in entry.candidates.contains { $0.word == word } }
                         return hint.words.isEmpty ? nil : hint
                     }
-                    selectedCandidate = nil
+                    selectedCandidates = []
                 }) { Image(systemName: "minus") }
                     .disabled(selectedCandidate == nil)
                     .help("選択した候補を削除")
+                    .accessibilityLabel(PreferencesAccessibility.removeCandidate)
                 Button(action: { move(by: -1) }) { Image(systemName: "arrow.up") }
                     .disabled(!canMove(by: -1))
+                    .accessibilityLabel(PreferencesAccessibility.moveCandidateUp)
                 Button(action: { move(by: 1) }) { Image(systemName: "arrow.down") }
                     .disabled(!canMove(by: 1))
+                    .accessibilityLabel(PreferencesAccessibility.moveCandidateDown)
                 Spacer()
             }
             .buttonStyle(.borderless)
@@ -329,12 +347,12 @@ struct EntryDetailView: View {
                     ForEach(entry.hints, id: \.okuri) { hint in
                         HStack {
                             Text(hint.okuri).font(.body.monospaced())
-                            Text(hint.words.joined(separator: "、")).foregroundColor(.secondary)
+                            Text(hint.words.joined(separator: "、")).foregroundColor(.prefSecondary)
                         }
                     }
                     Text("変換時に学習された送り仮名との組み合わせです。候補を削除すると対応する項目も外れます。")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .foregroundColor(.prefSecondary)
                 }
             }
         }

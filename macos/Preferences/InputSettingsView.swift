@@ -34,13 +34,13 @@ struct InputSettingsView: View {
                 Toggle(isOn: $store.settings.fullWidthComma) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("読点に「，」を使う")
-                        Text("オフのときは「、」").font(.caption).foregroundColor(.secondary)
+                        Text("オフのときは「、」").font(.subheadline).foregroundColor(.prefSecondary)
                     }
                 }
                 Toggle(isOn: $store.settings.fullWidthPeriod) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("句点に「．」を使う")
-                        Text("オフのときは「。」").font(.caption).foregroundColor(.secondary)
+                        Text("オフのときは「。」").font(.subheadline).foregroundColor(.prefSecondary)
                     }
                 }
             } header: {
@@ -52,7 +52,7 @@ struct InputSettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("入力中にサジェストを表示する")
                         Text("▽で読みを入力している間、その読みで始まる辞書の見出し語をカーソルの下に一覧します。TAB で補完できます。")
-                            .font(.caption).foregroundColor(.secondary)
+                            .font(.subheadline).foregroundColor(.prefSecondary)
                     }
                 }
                 Stepper(value: $store.settings.suggestCount, in: InputSettings.suggestCountRange) {
@@ -68,7 +68,7 @@ struct InputSettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("補完にシステム辞書も使う")
                         Text("オフのときはユーザー辞書(自分が変換した読み)だけから補完・サジェストします。TAB 補完にも効きます。")
-                            .font(.caption).foregroundColor(.secondary)
+                            .font(.subheadline).foregroundColor(.prefSecondary)
                     }
                 }
             } header: {
@@ -80,7 +80,7 @@ struct InputSettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("変換候補の注釈を表示する")
                         Text("候補を選んでいる間、辞書の注釈(「悪;わるし（形）」の「わるし（形）」など)をカーソルの下に表示します。")
-                            .font(.caption).foregroundColor(.secondary)
+                            .font(.subheadline).foregroundColor(.prefSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: 440, alignment: .leading)
                     }
@@ -89,13 +89,13 @@ struct InputSettingsView: View {
                 Text("注釈").font(.headline)
             } footer: {
                 Text("設定は次にどこかのアプリで入力を始めたときに反映されます。")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                    .foregroundColor(.prefSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             if let error = store.saveError {
-                Text("保存できません: \(error)").foregroundColor(.red).font(.callout)
+                Text("保存できません: \(error)").foregroundColor(.prefError).font(.callout)
             }
         }
         .padding()
@@ -131,7 +131,7 @@ struct SkkservSettingsView: View {
                             }
                         }
                     if Int(portText).map({ (1...65535).contains($0) }) != true {
-                        Text("1〜65535 の数字を入力してください").font(.caption).foregroundColor(.red)
+                        Text("1〜65535 の数字を入力してください").font(.subheadline).foregroundColor(.prefError)
                     }
                 }
 
@@ -151,14 +151,14 @@ struct SkkservSettingsView: View {
                     Text("従来の skkserv は EUC-JP です。yaskkserv2 などを UTF-8 で動かしている場合は UTF-8 を選んでください。"
                          + " 設定は次にどこかのアプリで入力を始めたときに反映されます。")
                 }
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.subheadline)
+                .foregroundColor(.prefSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 480, alignment: .leading)
             }
 
             if let error = store.saveError {
-                Text("保存できません: \(error)").foregroundColor(.red).font(.callout)
+                Text("保存できません: \(error)").foregroundColor(.prefError).font(.callout)
             }
         }
         .padding()
