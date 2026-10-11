@@ -1,7 +1,9 @@
 # NablaSKK — 作業規則
 
-このリポジトリで作業するときの恒久的な規則。経緯や決定の根拠は
-`docs/decisions.md`、進行中の状態は `HANDOFF.md`(gitignore、あれば)を見る。
+このリポジトリで作業するときの恒久的な規則。仕様は `docs/specifications.md`、
+判断の根拠は `docs/adr/`(ADR 導入前の分は `docs/decisions.md`)、進行中の状態は
+`HANDOFF.md`(gitignore、あれば)を見る。グローバルの `~/.claude/CLAUDE.md` の
+規則(ADR、仕様書、Git 運用、GitHub Actions)にも従う(ADR 0001)。
 
 ## 位置づけ
 - AquaSKK (https://github.com/codefirst/aquaskk) のエンジンを Rust に移植したもの。
@@ -19,7 +21,7 @@
   必要なものは std か `extern "C"` で libc を直接宣言して書く。
 - エンジンの挙動は本家に合わせる。設定のデフォルトは本家 UserDefaults.plist
   の値(`crates/nablaskk-core/src/config.rs`)。本家と意図的に変えた点は
-  `docs/decisions.md` の対応表に追記する。
+  ADR に書く(`docs/decisions.md` には追記しない)。
 - 本家の受け入れテスト(`crates/nablaskk-core/testdata/session_test.dat`、
   400 ケース)は常に全一致させる。エンジンを触ったら必ず `cargo test`。
 - Rust–Swift 境界(`crates/nablaskk-ffi`)は C ABI。文字列は NUL 終端 UTF-8、
@@ -28,11 +30,21 @@
   API を足したら `include/nablaskk.h` と `swift/SKKSession.swift` も同時に更新。
 
 ## 進め方
+- 実装の前に `docs/adr/` に ADR を書き(連番 + kebab-case、テンプレートは
+  グローバル規則)、コミットせずにレビューを受ける。採択されたらステータスを
+  「採択」にしてコミットし、実装に入る。コミット済みの ADR はステータスの行
+  以外を変えない(adr-guard が hook と CI で止める)。仕様を変えるときは新しい
+  ADR を書く。
+- 作業はブランチで行い、main へは `git merge --no-ff` で入れる。main を
+  rebase しない。仕様が変わったら `docs/specifications.md` と README を同じ
+  ブランチで更新する。
+- リリースは `v` タグ(`-` を含むタグはプレリリース)。リリースノートには
+  追加・削除したものを書いてから公開する。
 - 作業者は IME を常用(ドッグフーディング)している。**入力中の IME を勝手に
   再起動・差し替えしない**。ビルドしたら差し替えコマンドを提示するだけにする。
 - GUI や IME の挙動変更は、作業者が実機で確認してから「コミットして」と
   言われるまでコミットしない(依頼があった場合)。それ以外の変更は通常どおり。
-- コミットメッセージ末尾は `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`。
+- コミットメッセージ末尾は `Co-Authored-By: Claude <そのとき使っているモデル名> <noreply@anthropic.com>`。
 - バックグラウンドに回りうるシェルコマンドで素の `ls` を使わない
   (`ls`→`eza` の alias が stdin を読んで永久に止まる)。`command ls` を使う。
 

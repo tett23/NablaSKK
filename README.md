@@ -58,6 +58,9 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
 一覧、TAB で補完)は「入力」ページでオン/オフ、件数、システム辞書も使うかを
 設定できます(既定はオフ)。
 
+「入力」ページで有効にすると、変換候補を選んでいる間、辞書の注釈
+(`悪;わるし（形）` の「わるし（形）」など)をカーソルの下に表示します(既定はオフ)。
+
 「ローマ字」ページでは、組み込みの `z.` → `…` のようなローマ字かな変換の
 ルールを自分で追加できます(例: `fj` → `、`)。
 
@@ -231,13 +234,29 @@ GitHub Actions(`.github/workflows/ci.yml`)が push / PR ごとに
 - `nablaskk-ffi-macos-universal.tar.gz` — libnablaskk_ffi.a + nablaskk.h +
   SKKSession.swift(Swift 組み込み用)
 
-`v*` タグを push すると、これらを添付したドラフトリリースが作成されます:
+`v*` タグを push すると、これらを添付したドラフトリリースが作成されます。
+タグ名に `-` を含む場合(`v1.1.0-rc` など)はプレリリースになります:
 
 ```sh
-git tag v0.1.0 && git push origin v0.1.0
+git tag v1.1.0 && git push origin v1.1.0
 ```
 
 ローカルでユニバーサル版アプリを作るには `UNIVERSAL=1 sh macos/build-app.sh`。
+
+## 開発
+
+仕様は [docs/specifications.md](docs/specifications.md) にまとめています。
+設計判断は実装の前に `docs/adr/` に ADR として書きます。コミット済みの ADR は
+ステータスの行以外を変更できません([adr-guard](https://github.com/tett23/adr-guard)
+で検査)。作業はブランチで行い、main へは `--no-ff` でマージします。
+
+クローンしたら、adr-guard を入れて git の hook を有効にしてください
+(Claude Code の hook は `.claude/settings.json` に入っています):
+
+```sh
+cargo install --git https://github.com/tett23/adr-guard --tag v0.1.0
+git config core.hooksPath .githooks
+```
 
 ## テスト
 

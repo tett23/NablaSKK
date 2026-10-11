@@ -8,6 +8,21 @@ on:
 
 jobs:
   # ==================================================================
+  # Committed ADRs are immutable except their status line (ADR 0001)
+  # ==================================================================
+  adr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: tett23/adr-guard@v0.1.0
+        with:
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+  # ==================================================================
   # Tests (includes the 400-case acceptance suite)
   # ==================================================================
   test:
@@ -16,7 +31,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
       - name: cargo test
         run: cargo test --workspace
@@ -36,7 +51,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
       - name: Build release binaries
         run: cargo build --release -p skkserv -p skk-cli
@@ -45,7 +60,7 @@ jobs:
           mkdir -p dist
           tar -C target/release -czf dist/nablaskk-tools-linux-x86_64.tar.gz \
               skkserv skk-cli
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nablaskk-tools-linux-x86_64
           path: dist/nablaskk-tools-linux-x86_64.tar.gz
@@ -69,7 +84,7 @@ jobs:
       NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
       NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
       - name: Add Rust targets
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
@@ -129,7 +144,7 @@ jobs:
           tar -czf dist/nablaskk-ffi-macos-universal.tar.gz -C ffi \
               libnablaskk_ffi.a nablaskk.h SKKSession.swift
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nablaskk-macos-universal
           path: dist/*
@@ -144,13 +159,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
+          # Tags with a "-" (v1.1.0-rc) are prereleases
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           files: dist/*
