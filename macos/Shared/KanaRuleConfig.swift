@@ -164,13 +164,15 @@ struct KanaRuleSettings: Equatable {
     ///   (adding "ka." would make "ka" wait for another key).
     /// Being a prefix of an existing rule ("f" of "fa") changes nothing
     /// else and is allowed.
-    func conflicts(builtin: [KanaRule]) -> [UUID: String] {
+    /// `builtinOrigin` names the table in messages ("組み込み", or
+    /// "組み込み・AZIK(JIS 配列)" with sub-rules layered on).
+    func conflicts(builtin: [KanaRule], builtinOrigin: String = "組み込み") -> [UUID: String] {
         var result: [UUID: String] = [:]
         var accepted = builtin.map { (rule: $0, isBuiltin: true) }
 
         for rule in rules where rule.problem == nil {
             if let same = accepted.last(where: { $0.rule.input == rule.input }) {
-                let origin = same.isBuiltin ? "組み込みのルール" : "追加したルール"
+                let origin = same.isBuiltin ? "\(builtinOrigin)のルール" : "追加したルール"
                 result[rule.id] = same.rule.output == rule.output
                     ? "同じルールが\(origin)にあります"
                     : "\(origin)「\(same.rule.input) → \(same.rule.output)」と入力キーが衝突します"
@@ -195,6 +197,7 @@ struct KanaRuleSettings: Equatable {
 
     /// The rules that are saved and handed to the engine.
     func acceptedRules(builtin: [KanaRule]) -> [KanaRule] {
+        // The messages do not matter here
         let conflicts = conflicts(builtin: builtin)
         return rules.filter { $0.problem == nil && conflicts[$0.id] == nil }
     }

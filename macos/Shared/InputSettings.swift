@@ -54,6 +54,41 @@ struct InputSettings: Equatable {
     /// ("悪;わるし（形）"). Off by default, as AquaSKK's enable_annotation.
     var annotationEnabled = false
 
+    /// Extended romaji input from AquaSKK's sub-rules (ADR 0003): one of
+    /// standard / AZIK (JIS) / AZIK (US) / ACT.
+    enum InputStyle: String, CaseIterable, Identifiable {
+        case standard
+        case azik
+        case azikUS = "azik_us"
+        case act
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .standard: return "標準"
+            case .azik: return "AZIK(JIS 配列)"
+            case .azikUS: return "AZIK(US 配列)"
+            case .act: return "ACT"
+            }
+        }
+
+        var summary: String {
+            switch self {
+            case .standard: return "通常のローマ字入力です。"
+            case .azik: return "q で「ん」、; で「っ」、kz で「かん」など。ひらがな⇔カタカナは @ キー。"
+            case .azikUS: return "AZIK を US 配列向けにしたもの。: で「っ」、' で「ー」など。ひらがな⇔カタカナは [ キー。"
+            case .act: return "q で「おん」、x で「いん」など。ひらがな⇔カタカナは \\ キー。"
+            }
+        }
+    }
+
+    var inputStyle = InputStyle.standard
+    /// SKK日本語入力FEP / Egg compatible symbols (yakumono-ippai.rule).
+    var yakumonoIppai = false
+    /// Old kana: ゐ ゑ くゎ ぐゎ (old-kana.rule).
+    var oldKana = false
+
     /// Query an external skkserv after every local dictionary.
     var skkservEnabled = false
     var skkservHost = "localhost"
@@ -76,6 +111,9 @@ struct InputSettings: Equatable {
 
     static let header = """
     # NablaSKK input settings: key=value per line.
+    #   input_style=standard|azik|azik_us|act  extended romaji input (AquaSKK sub-rules)
+    #   yakumono_ippai=on|off  Egg compatible symbols (z1 → ○ ...)
+    #   old_kana=on|off   old kana (wi → ゐ, we → ゑ, kwa → くゎ, gwa → ぐゎ)
     #   comma=fullwidth   type , as ， (default: 、)
     #   period=fullwidth  type . as ． (default: 。)
     #   suggest=on        list dictionary entries extending the reading being typed
@@ -106,6 +144,9 @@ struct InputSettings: Equatable {
             let key = line[..<equals].trimmingCharacters(in: .whitespaces)
             let value = line[line.index(after: equals)...].trimmingCharacters(in: .whitespaces)
             switch key {
+            case "input_style": settings.inputStyle = InputStyle(rawValue: value) ?? .standard
+            case "yakumono_ippai": settings.yakumonoIppai = value == "on"
+            case "old_kana": settings.oldKana = value == "on"
             case "comma": settings.fullWidthComma = value == "fullwidth"
             case "period": settings.fullWidthPeriod = value == "fullwidth"
             case "suggest": settings.suggestEnabled = value == "on"
@@ -125,6 +166,9 @@ struct InputSettings: Equatable {
 
     func serialize() -> String {
         Self.header + "\n"
+            + "input_style=\(inputStyle.rawValue)\n"
+            + "yakumono_ippai=\(yakumonoIppai ? "on" : "off")\n"
+            + "old_kana=\(oldKana ? "on" : "off")\n"
             + "comma=\(fullWidthComma ? "fullwidth" : "japanese")\n"
             + "period=\(fullWidthPeriod ? "fullwidth" : "japanese")\n"
             + "suggest=\(suggestEnabled ? "on" : "off")\n"

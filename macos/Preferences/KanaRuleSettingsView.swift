@@ -13,18 +13,34 @@ final class KanaRuleStore: ObservableObject {
     }
     @Published var saveError: String?
 
-    /// Built-in symbol rules (z. → …, [ → 「 ...) listed read-only below
-    /// the user's rules; a → あ and the like are obvious and left out.
-    let visibleBuiltinRules: [KanaRule]
-    /// Every built-in rule, for conflict checks.
-    let builtinRules: [KanaRule]
+    /// The built-in table (data/kana-rule.utf8.conf).
+    private let baseRules: [KanaRule]
+    /// The built-in table with the selected sub-rules (AZIK, ACT,
+    /// yakumono-ippai, old-kana) layered on, as the engine has it: what
+    /// user rules are checked against (ADR 0003).
+    @Published private(set) var builtinRules: [KanaRule]
+    /// Names the layered table in conflict messages.
+    @Published private(set) var builtinOrigin = "組み込み"
 
-    init() {
+    /// Symbol rules (z. → …, [ → 「 ...) listed read-only below the
+    /// user's rules; a → あ and the like are obvious and left out.
+    var visibleBuiltinRules: [KanaRule] { builtinRules.filter(\.isSymbolRule) }
+
+    init(inputSettings: InputSettings) {
         settings = KanaRuleSettings.load()
         let url = Bundle.main.url(forResource: "kana-rule.utf8", withExtension: "conf")
-        builtinRules = url.flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        baseRules = url.flatMap { try? String(contentsOf: $0, encoding: .utf8) }
             .map(KanaRuleSettings.builtinRules(from:)) ?? []
-        visibleBuiltinRules = builtinRules.filter(\.isSymbolRule)
+        builtinRules = baseRules
+        useSubRules(of: inputSettings)
+    }
+
+    /// Re-layer the table when the input style or extras change. The
+    /// saved file is left alone until the next edit.
+    func useSubRules(of inputSettings: InputSettings) {
+        let directory = Bundle.main.resourceURL ?? Bundle.main.bundleURL
+        builtinRules = SubRules.layeredRules(base: baseRules, settings: inputSettings, in: directory)
+        builtinOrigin = SubRules.origin(for: inputSettings)
     }
 
     private func save() {
@@ -49,7 +65,7 @@ final class KanaRuleStore: ObservableObject {
 
     /// Why a row is not saved, and which of its fields is at fault.
     func issues() -> [UUID: KanaRuleIssue] {
-        var issues = settings.conflicts(builtin: builtinRules)
+        var issues = settings.conflicts(builtin: builtinRules, builtinOrigin: builtinOrigin)
             .mapValues { KanaRuleIssue(message: $0, field: .input) }
         for rule in settings.rules {
             if let message = rule.problemMessage, !(rule.input.isEmpty && rule.output.isEmpty) {
@@ -69,7 +85,9 @@ struct KanaRuleIssue {
 /// Rows live in a plain ScrollView rather than a List: in a List with
 /// selection the table took the click and the text fields never got focus.
 struct KanaRuleSettingsView: View {
-    @StateObject private var store = KanaRuleStore()
+    /// settings.conf: the input style and the extra sub-rules live there
+    @StateObject private var inputStore = InputSettingsStore()
+    @StateObject private var store = KanaRuleStore(inputSettings: InputSettings.load())
     @FocusState private var focusedRule: UUID?
 
     static let inputWidth: CGFloat = 120
@@ -79,6 +97,8 @@ struct KanaRuleSettingsView: View {
         let issues = store.issues()
 
         VStack(alignment: .leading, spacing: 8) {
+            subRulesSection
+
             Text("かなモードで入力キーを続けて打つと、出力の文字になります(組み込みの「z.」→「…」と同じ仕組みです)。"
                  + "例えば入力キーを「fj」、出力を「、」にすると、fj で読点を打てます。"
                  + "カタカナ・半角カナモードでは出力をカタカナ・半角に変えて使います。")
@@ -102,7 +122,7 @@ struct KanaRuleSettingsView: View {
 
                     Divider().padding(.vertical, 8)
 
-                    sectionHeader("組み込みの記号のルール(変更・削除はできません)")
+                    sectionHeader(builtinHeader)
                     ForEach(store.visibleBuiltinRules) { rule in
                         BuiltinKanaRuleRow(rule: rule)
                     }
@@ -129,6 +149,48 @@ struct KanaRuleSettingsView: View {
             }
         }
         .padding()
+    }
+
+    /// AquaSKK's sub-rules (ADR 0003): one input style, plus symbols and
+    /// old kana that combine with any style.
+    private var subRulesSection: some View {
+        let settings = inputStore.settings
+        return VStack(alignment: .leading, spacing: 6) {
+            Picker("入力方式", selection: $inputStore.settings.inputStyle) {
+                ForEach(InputSettings.InputStyle.allCases) { style in
+                    Text(style.label).tag(style)
+                }
+            }
+            .pickerStyle(.radioGroup)
+            .horizontalRadioGroupLayout()
+            Text(settings.inputStyle.summary)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            HStack(spacing: 16) {
+                Toggle("記号入力(SKK日本語入力FEP/Egg 互換。z1 → ○ など)", isOn: $inputStore.settings.yakumonoIppai)
+                Toggle("旧かな(ゐ・ゑ・くゎ・ぐゎ)", isOn: $inputStore.settings.oldKana)
+            }
+            if settings.inputStyle == .act && (settings.yakumonoIppai || settings.oldKana) {
+                Text("ACT と併用すると、一部のキーは記号入力・旧かなのほうになります(例: z; は ACT の「ざん」ではなく「゛」、wi は「ゐ」)。")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if settings.inputStyle != .standard {
+                Text("ひらがな⇔カタカナなどのキーも入力方式に合わせて変わりますが、「キー」ページの既定の表示は標準のままです。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let error = inputStore.saveError {
+                Text("保存できません: \(error)").foregroundColor(.red).font(.callout)
+            }
+        }
+        .onChange(of: inputStore.settings) { store.useSubRules(of: $0) }
+    }
+
+    private var builtinHeader: String {
+        "\(SubRules.origin(for: inputStore.settings))の記号のルール(変更・削除はできません)"
     }
 
     private func sectionHeader(_ title: String) -> some View {

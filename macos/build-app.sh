@@ -21,6 +21,7 @@ SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Shared/InputSettings.swift \
     macos/Shared/KeymapConfig.swift \
     macos/Shared/KanaRuleConfig.swift \
+    macos/Shared/SubRules.swift \
     macos/Sources/KeyTranslator.swift \
     macos/Sources/ClientQuirks.swift \
     macos/Sources/CompletionWindow.swift \
@@ -32,6 +33,7 @@ PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
     macos/Shared/InputSettings.swift \
     macos/Shared/KeymapConfig.swift \
     macos/Shared/KanaRuleConfig.swift \
+    macos/Shared/SubRules.swift \
     macos/Preferences/PreferencesApp.swift \
     macos/Preferences/UserDictionaryView.swift \
     macos/Preferences/InputSettingsView.swift \
@@ -65,12 +67,20 @@ build_prefs() {
 
 # The preferences app lives inside the input method bundle so a single
 # copy installs both.
+# AquaSKK's sub-rules (ADR 0003): read by the input method and, for the
+# preferences app's conflict checks, by the preferences app.
+copy_sub_rules() {
+    cp data/azik.rule data/azik_us.rule data/act.rule data/azik.conf data/act.conf \
+        data/yakumono-ippai.rule data/old-kana.rule "$1/"
+}
+
 prepare_prefs_bundle() {
     mkdir -p "$PREFS_APP/Contents/MacOS"
     cp macos/Preferences/Info.plist "$PREFS_APP/Contents/Info.plist"
     # Built-in rules, to show which one a user rule replaces
     mkdir -p "$PREFS_APP/Contents/Resources"
     cp data/kana-rule.utf8.conf "$PREFS_APP/Contents/Resources/"
+    copy_sub_rules "$PREFS_APP/Contents/Resources"
     printf 'APPL????' > "$PREFS_APP/Contents/PkgInfo"
 }
 
@@ -119,6 +129,7 @@ fi
 
 cp macos/Info.plist "$CONTENTS/Info.plist"
 printf 'APPL????' > "$CONTENTS/PkgInfo"
+copy_sub_rules "$CONTENTS/Resources"
 
 # Developer ID signing when SIGN_IDENTITY is set; ad-hoc otherwise.
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"

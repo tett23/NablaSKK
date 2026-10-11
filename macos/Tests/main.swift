@@ -452,6 +452,118 @@ do {
     try? FileManager.default.removeItem(atPath: dict)
 }
 
+// Sub-rules: input style (AZIK / ACT), yakumono-ippai, old-kana (ADR 0003)
+do {
+    let data = URL(fileURLWithPath: "data", isDirectory: true)
+
+    // Settings
+    let defaults = InputSettings()
+    check(defaults.inputStyle == .standard && !defaults.yakumonoIppai && !defaults.oldKana,
+          "sub-rules: standard, no extras by default")
+    for style in InputSettings.InputStyle.allCases {
+        let parsed = InputSettings.parse("input_style=\(style.rawValue)\nyakumono_ippai=on\nold_kana=on\n")
+        check(parsed.inputStyle == style && parsed.yakumonoIppai && parsed.oldKana
+              && InputSettings.parse(parsed.serialize()) == parsed, "sub-rules: \(style.rawValue) parsed and round trip")
+    }
+    check(InputSettings.parse("input_style=dvorak\n").inputStyle == .standard, "sub-rules: unknown style falls back to standard")
+
+    // Files and order: style, then yakumono-ippai, then old-kana; keymap patch per style
+    var all = InputSettings(); all.inputStyle = .act; all.yakumonoIppai = true; all.oldKana = true
+    check(SubRules.ruleFiles(for: all) == ["act.rule", "yakumono-ippai.rule", "old-kana.rule"], "sub-rules: rule files in AquaSKK's order")
+    check(SubRules.ruleFiles(for: InputSettings()).isEmpty && SubRules.keymapFile(for: InputSettings()) == nil,
+          "sub-rules: nothing for the standard style")
+    var azikUS = InputSettings(); azikUS.inputStyle = .azikUS
+    check(SubRules.keymapFile(for: azikUS) == "azik.conf" && SubRules.keymapFile(for: all) == "act.conf",
+          "sub-rules: AZIK (both layouts) and ACT keymap patches")
+    check(SubRules.ruleText(for: all, in: data)?.contains("z1,○") == true, "sub-rules: EUC-JP rule files are read")
+
+    func session(_ settings: InputSettings, userRules: KanaRuleSettings = KanaRuleSettings(), keymapOverride: String = "") -> SKKSession {
+        let path = NSTemporaryDirectory() + "nablaskk-subrule-user"
+        try? FileManager.default.removeItem(atPath: path)
+        let s = SKKSession(userDictionaryPath: path)
+        // The input method's order
+        s.resetKanaRules()
+        if let rules = SubRules.ruleText(for: settings, in: data) { s.patchKanaRules(rules) }
+        if !settings.kanaRulePatch.isEmpty { s.patchKanaRules(settings.kanaRulePatch) }
+        if !userRules.patchText.isEmpty { s.patchKanaRules(userRules.patchText) }
+        s.resetKeymap()
+        if let keymap = SubRules.keymapText(for: settings, in: data) { s.patchKeymap(keymap) }
+        if !keymapOverride.isEmpty { s.overrideKeymap(keymapOverride) }
+        return s
+    }
+    func typed(_ s: SKKSession, _ keys: String) -> String {
+        for c in keys.utf8 { s.handle(charcode: c) }
+        return s.takeFixed()
+    }
+
+    // Standard
+    let standard = session(InputSettings())
+    standard.handle(charcode: UInt8(ascii: "q"))
+    check(standard.inputMode == .katakana, "sub-rules: standard q toggles katakana")
+    standard.inputMode = .hirakana
+    check(typed(standard, "kzka") != "かんか", "sub-rules: standard has no AZIK kz")
+
+    // AZIK (JIS)
+    var azik = InputSettings(); azik.inputStyle = .azik
+    let azikSession = session(azik)
+    check(typed(azikSession, "kz") == "かん" && typed(azikSession, "q") == "ん" && typed(azikSession, "ss") == "せい"
+          && typed(azikSession, ";ka") == "っか", "sub-rules: AZIK kz / q / ss / ;")
+    azikSession.handle(charcode: UInt8(ascii: "@"), keycode: 0x21)
+    check(azikSession.inputMode == .katakana, "sub-rules: AZIK @ key (keycode 0x21) toggles katakana")
+
+    // AZIK (US)
+    let azikUSSession = session(azikUS)
+    check(typed(azikUSSession, ":ka") == "っか" && typed(azikUSSession, "'") == "ー", "sub-rules: AZIK (US) : and '")
+
+    // ACT
+    var act = InputSettings(); act.inputStyle = .act
+    let actSession = session(act)
+    check(typed(actSession, "q") == "おん", "sub-rules: ACT q")
+    // x also starts built-in rules (xa → ぁ), so like n it waits for the next key
+    check(typed(actSession, "x ") == "いん ", "sub-rules: ACT x")
+    actSession.handle(charcode: UInt8(ascii: "\\"))
+    check(actSession.inputMode == .katakana, "sub-rules: ACT \\ toggles katakana")
+
+    // yakumono-ippai and old-kana, alone and combined
+    var extras = InputSettings(); extras.yakumonoIppai = true; extras.oldKana = true
+    let extrasSession = session(extras)
+    check(typed(extrasSession, "z1") == "○" && typed(extrasSession, "z(") == "【" && typed(extrasSession, "z,") == "‥",
+          "sub-rules: yakumono-ippai z1 / z( / z,")
+    check(typed(extrasSession, "wi") == "ゐ" && typed(extrasSession, "we") == "ゑ" && typed(extrasSession, "kwa") == "くゎ",
+          "sub-rules: old-kana wi / we / kwa")
+    check(typed(standard, "wi") == "うぃ" && typed(standard, "z1") != "○", "sub-rules: off by default")
+    var azikAll = azik; azikAll.yakumonoIppai = true; azikAll.oldKana = true
+    let azikAllSession = session(azikAll)
+    check(typed(azikAllSession, "kz") == "かん" && typed(azikAllSession, "z1") == "○" && typed(azikAllSession, "wi") == "ゐ",
+          "sub-rules: AZIK with yakumono-ippai and old-kana")
+    var actYakumono = act; actYakumono.yakumonoIppai = true
+    check(typed(session(actYakumono), "z;") == "゛", "sub-rules: yakumono-ippai after ACT (z; is ゛, not ざん)")
+
+    // Punctuation and user rules come last
+    var azikComma = azik; azikComma.fullWidthComma = true
+    check(typed(session(azikComma), ",") == "，", "sub-rules: the comma option wins over AZIK")
+    let base = KanaRuleSettings.builtinRules(from: try! String(contentsOfFile: "data/kana-rule.utf8.conf", encoding: .utf8))
+    let withAzik = SubRules.layeredRules(base: base, settings: azik, in: data)
+    let fjComma = KanaRuleSettings(rules: [KanaRule(input: "fj", output: "、")])
+    check(fjComma.conflicts(builtin: base).isEmpty && !fjComma.conflicts(builtin: withAzik).isEmpty,
+          "sub-rules: a user fj conflicts with AZIK's fj (ふん) only when AZIK is on")
+    // zv is AZIK's ざい; jb is free in both tables
+    let zv = KanaRuleSettings(rules: [KanaRule(input: "zv", output: "★")])
+    check(!zv.conflicts(builtin: withAzik).isEmpty, "sub-rules: a user zv conflicts with AZIK's zv (ざい)")
+    check(SubRules.origin(for: azikAll) == "組み込み・AZIK(JIS 配列)・記号入力・旧かな"
+          && zv.conflicts(builtin: withAzik, builtinOrigin: SubRules.origin(for: azik)).values.first?
+              .contains("組み込み・AZIK(JIS 配列)のルール「zv → ざい」") == true,
+          "sub-rules: conflict messages name the selected sub-rules")
+    let jb = KanaRuleSettings(rules: [KanaRule(input: "jb", output: "★")])
+    check(jb.conflicts(builtin: withAzik).isEmpty && typed(session(azik, userRules: jb), "jb") == "★",
+          "sub-rules: a non-conflicting user rule works with AZIK")
+    let overridden = session(azik, keymapOverride: "ToggleKana\tctrl::t")
+    overridden.handle(charcode: UInt8(ascii: "@"), keycode: 0x21)
+    check(overridden.inputMode == .hirakana, "sub-rules: a keymap override replaces AZIK's toggle key")
+    overridden.handle(charcode: UInt8(ascii: "t"), mods: [.ctrl])
+    check(overridden.inputMode == .katakana, "sub-rules: ...with the user's key")
+}
+
 // Input mode can be set directly (used to restore a client's ASCII mode)
 do {
     let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-mode-test")
