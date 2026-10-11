@@ -86,7 +86,7 @@ struct KeymapRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(action.label)
-                Text(action.symbol).font(.caption2).foregroundColor(.prefSecondary)
+                Text(action.symbol).font(.subheadline).foregroundColor(.prefSecondary)
             }
             .frame(width: Self.labelWidth, alignment: .leading)
 
@@ -106,6 +106,11 @@ struct KeymapRow: View {
                     Text("書き方が正しくありません(例: ctrl::j、hex::0x1b)")
                         .font(.subheadline)
                         .foregroundColor(.prefError)
+                } else if isOverridden {
+                    // The default was only in the tooltip (ADR 0007)
+                    Text("デフォルト: \(action.defaultKeys)")
+                        .font(.subheadline)
+                        .foregroundColor(.prefSecondary)
                 }
             }
 

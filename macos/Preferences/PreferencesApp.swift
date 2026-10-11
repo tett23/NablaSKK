@@ -52,6 +52,10 @@ struct RootView: View {
 
     private var pane: SettingsPane { SettingsPane(rawValue: selectedPane) ?? .dictionaries }
 
+    /// The sidebar takes keyboard focus once a page is chosen, so ↑↓ move
+    /// between pages (ADR 0007)
+    @FocusState private var sidebarFocused: Bool
+
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
@@ -65,6 +69,20 @@ struct RootView: View {
             .frame(width: Self.sidebarWidth)
             .frame(maxHeight: .infinity)
             .background(SidebarBackground())
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(PreferencesAccessibility.sidebarGroup)
+            .focusable()
+            .focused($sidebarFocused)
+            .onMoveCommand { direction in
+                let panes = SettingsPane.allCases
+                guard let index = panes.firstIndex(of: pane) else { return }
+                switch direction {
+                case .up where index > 0: selectedPane = panes[index - 1].rawValue
+                case .down where index < panes.count - 1: selectedPane = panes[index + 1].rawValue
+                default: break
+                }
+            }
+            .onChange(of: selectedPane) { _ in sidebarFocused = true }
 
             Divider()
 
@@ -121,6 +139,11 @@ struct SidebarItem: View {
 
     private var isSelected: Bool { selection == pane.rawValue }
 
+    private var position: String {
+        let panes = SettingsPane.allCases
+        return PreferencesAccessibility.sidebarPosition((panes.firstIndex(of: pane) ?? 0) + 1, of: panes.count)
+    }
+
     var body: some View {
         Button(action: { selection = pane.rawValue }) {
             HStack(spacing: 8) {
@@ -142,6 +165,7 @@ struct SidebarItem: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityValue(position)
     }
 }
 
@@ -307,13 +331,16 @@ struct DictionaryListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("辞書は上から順に検索されます。ファイルをここにドラッグ&ドロップすると "
+            Text("辞書は上から順に検索されます。チェックを外した辞書は検索しません。"
+                 + "行の先頭の ≡ をドラッグするか、↑↓ ボタンで並べ替えられます。ファイルをここにドラッグ&ドロップすると "
                  + "~/Library/Application Support/NablaSKK/dictionaries にコピーして追加します。")
                 .font(.callout)
                 .foregroundColor(.prefSecondary)
 
             HStack(spacing: 12) {
-                Text("").frame(width: DictionaryRow.handleWidth + DictionaryRow.toggleWidth + 12)
+                Text("").frame(width: DictionaryRow.handleWidth)
+                Text("使う").frame(width: DictionaryRow.toggleWidth + 8, alignment: .leading)
+                    .padding(.leading, -4)
                 Text("名前").frame(width: DictionaryRow.nameWidth, alignment: .leading)
                 Text("種類").frame(width: DictionaryRow.kindWidth, alignment: .leading)
                 Text("場所")
@@ -330,7 +357,8 @@ struct DictionaryListView: View {
                 VStack(spacing: 2) {
                     ForEach($store.entries) { $entry in
                         DictionaryRow(entry: $entry)
-                            .selectableRow(id: entry.id, selection: $selection)
+                            .selectableRow(id: entry.id, selection: $selection,
+                                           label: PreferencesAccessibility.selectRow(entry.name))
                             .onDrop(of: [.text], delegate: ReorderDropDelegate(target: entry.id, items: $store.entries))
                     }
                 }
@@ -438,8 +466,12 @@ struct DictionaryRow: View {
                 .frame(width: Self.toggleWidth)
                 .help("チェックを外すと検索対象から外れます")
                 .accessibilityLabel(PreferencesAccessibility.dictionaryEnabled(entry.name))
+                .accessibilityHint(PreferencesAccessibility.dictionaryEnabledHint)
 
-            Text(entry.name)
+            // A disabled dictionary says so in words, in the secondary colour,
+            // instead of fading the whole row (ADR 0007)
+            Text(entry.enabled ? entry.name : "\(entry.name)(無効)")
+                .foregroundColor(entry.enabled ? .primary : .prefSecondary)
                 .frame(width: Self.nameWidth, alignment: .leading)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -478,7 +510,6 @@ struct DictionaryRow: View {
             }
         }
         .padding(.vertical, 2)
-        .opacity(entry.enabled ? 1 : 0.5)
     }
 
     private var locationExists: Bool {

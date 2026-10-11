@@ -159,7 +159,7 @@ struct UserDictionaryView: View {
                     Spacer()
                     if entry.okuriAri {
                         Text("送り")
-                            .font(.caption2)
+                            .font(.subheadline)
                             .padding(.horizontal, 5).padding(.vertical, 1)
                             .background(Color.accentColor.opacity(0.15))
                             .cornerRadius(4)
@@ -281,7 +281,8 @@ struct EntryDetailView: View {
 
             HStack {
                 Text("候補").font(.headline)
-                Text("上から順に表示されます").font(.subheadline).foregroundColor(.prefSecondary)
+                Text("上から順に表示されます。行の先頭の ≡ をドラッグするか、↑↓ ボタンで並べ替えられます。")
+                    .font(.subheadline).foregroundColor(.prefSecondary)
                 Spacer()
             }
 
@@ -299,7 +300,10 @@ struct EntryDetailView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .foregroundColor(.prefSecondary)
                         }
-                        .selectableRow(id: candidate.id, selection: $selectedCandidates)
+                        .selectableRow(id: candidate.id, selection: $selectedCandidates,
+                                       label: PreferencesAccessibility.selectCandidate(
+                                           word: candidate.word,
+                                           number: (entry.candidates.firstIndex { $0.id == candidate.id } ?? 0) + 1))
                         .onDrop(of: [.text], delegate: ReorderDropDelegate(target: candidate.id, items: $entry.candidates))
                     }
                 }

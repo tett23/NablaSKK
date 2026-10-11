@@ -55,8 +55,9 @@ struct ReorderDropDelegate<Item: Identifiable>: DropDelegate where Item.ID == UU
 
 /// Row chrome for the hand-built lists: click the row's empty space or
 /// its plain text to select it; the selected row is tinted with the
-/// accent colour and marked selected for VoiceOver, which can also select
-/// it with the "この行を選択" action.
+/// accent colour and marked selected for VoiceOver. The button behind the
+/// row is named ("SKK-JISYO.L を選択") so Full Keyboard Access and
+/// VoiceOver select rows the same way (ADR 0007).
 ///
 /// The selection is read through the binding rather than taken as an
 /// `isSelected` Bool next to an action closure: with the closure SwiftUI
@@ -68,6 +69,8 @@ struct ReorderDropDelegate<Item: Identifiable>: DropDelegate where Item.ID == UU
 struct SelectableRow: ViewModifier {
     let id: UUID
     @Binding var selection: Set<UUID>
+    /// Name of the select button, e.g. "SKK-JISYO.Lを選択"
+    let label: String
 
     func body(content: Content) -> some View {
         let isSelected = selection.contains(id)
@@ -81,16 +84,16 @@ struct SelectableRow: ViewModifier {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityHidden(true)
+                .accessibilityLabel(label)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             )
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
-            .accessibilityAction(named: Text("この行を選択")) { selection = [id] }
     }
 }
 
 extension View {
-    func selectableRow(id: UUID, selection: Binding<Set<UUID>>) -> some View {
-        modifier(SelectableRow(id: id, selection: selection))
+    func selectableRow(id: UUID, selection: Binding<Set<UUID>>, label: String) -> some View {
+        modifier(SelectableRow(id: id, selection: selection, label: label))
     }
 }

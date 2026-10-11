@@ -18,6 +18,18 @@ enum PreferencesAccessibility {
     static func dictionaryKind(_ name: String) -> String { "\(name)の種類" }
     static func dictionaryLocation(_ name: String) -> String { "\(name)の場所" }
 
+    static let dictionaryEnabledHint = "チェックを外した辞書は検索しません"
+
+    // 一覧の行を選ぶボタン (ADR 0007)
+    static func selectRow(_ name: String) -> String { "\(name)を選択" }
+    static func selectCandidate(word: String, number: Int) -> String {
+        word.isEmpty ? "\(number) 番目の候補を選択" : selectRow(word)
+    }
+
+    // サイドバー (ADR 0007)
+    static let sidebarGroup = "設定のページ"
+    static func sidebarPosition(_ number: Int, of total: Int) -> String { "\(number) / \(total)" }
+
     // ユーザー辞書
     static let addEntry = "見出し語を追加"
     static let removeEntry = "選択した見出し語を削除"

@@ -586,6 +586,13 @@ do {
           && L.builtinRule(input: "z.", output: "…") == "z. を打つと …",
           "a11y labels: romaji rules")
 
+    // ADR 0007: row-select buttons and the sidebar position
+    check(L.selectRow("SKK-JISYO.L") == "SKK-JISYO.Lを選択", "a11y labels: select a dictionary row")
+    check(L.selectCandidate(word: "漢字", number: 2) == "漢字を選択" && L.selectCandidate(word: "", number: 3) == "3 番目の候補を選択",
+          "a11y labels: select a candidate row (an empty word falls back to its position)")
+    check(L.sidebarPosition(3, of: 6) == "3 / 6" && L.sidebarGroup == "設定のページ", "a11y labels: sidebar group and position")
+    check(L.dictionaryEnabledHint == "チェックを外した辞書は検索しません", "a11y labels: dictionary checkbox hint")
+
     let items = ["a", "b", "c", "d"]
     check(ListReorder.moved(items, from: 0, to: 2) == ["b", "c", "a", "d"], "reorder: drop a on c's row puts it there")
     check(ListReorder.moved(items, from: 3, to: 0) == ["d", "a", "b", "c"], "reorder: drop d on the first row")
