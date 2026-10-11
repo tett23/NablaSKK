@@ -271,6 +271,14 @@ cargo test
 **本家の受け入れテストスイート(SKKInputSession_TEST の test.dat、400ケース)を
 そのまま再生するパリティテスト**を含み、全ケースで本家エンジンと出力が一致します。
 
+macOS 側のテストは次のとおりです(CI の macOS ジョブでも実行します):
+
+```sh
+sh swift/run-smoke-test.sh   # Swift ↔ FFI のスモークテスト
+sh macos/run-tests.sh        # キー変換・設定ファイル・ユーザー辞書など
+sh macos/run-ui-tests.sh     # 設定アプリの UI(画面外のウィンドウ。利用者の設定には触れない)
+```
+
 ## 本家との差分
 
 - 辞書ファイルのエンコーディングは EUC-JP に加えて UTF-8 に対応し、
