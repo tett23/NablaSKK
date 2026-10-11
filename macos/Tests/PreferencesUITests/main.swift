@@ -56,10 +56,13 @@ for (mode, appearance) in [("light", NSAppearance(named: .aqua)!), ("dark", NSAp
 let support = DictionaryConfig.supportDirectory
 let presentDictionary = support.appendingPathComponent("SKK-JISYO.present").path
 let missingDictionary = support.appendingPathComponent("SKK-JISYO.missing").path
+let disabledDictionary = support.appendingPathComponent("SKK-JISYO.off").path
 try! "".write(toFile: presentDictionary, atomically: true, encoding: .utf8)
+try! "".write(toFile: disabledDictionary, atomically: true, encoding: .utf8)
 // The missing one first: the row under the present one (gadget) has no error
-try! "0 \(missingDictionary)\n0 \(presentDictionary)\n4\n".write(to: DictionaryConfig.fileURL, atomically: true, encoding: .utf8)
-try! "SKK_JMODE bad spec\n".write(to: KeymapSettings.fileURL, atomically: true, encoding: .utf8)
+try! "0 \(missingDictionary)\n0 \(presentDictionary)\n4\n- 0 \(disabledDictionary)\n"
+    .write(to: DictionaryConfig.fileURL, atomically: true, encoding: .utf8)
+try! "SKK_JMODE bad spec\nSKK_CANCEL ctrl::g\n".write(to: KeymapSettings.fileURL, atomically: true, encoding: .utf8)
 try! "jb,★,★,★\n".write(to: KanaRuleSettings.fileURL, atomically: true, encoding: .utf8)
 try! ";; okuri-ari entries.\n;; okuri-nasi entries.\nてすと /試験/\n"
     .write(to: support.appendingPathComponent("skk-jisyo"), atomically: true, encoding: .utf8)
@@ -178,6 +181,34 @@ for order in orders {
     }
 }
 
+// MARK: - Sidebar keyboard (ADR 0007)
+
+func press(keyCode: UInt16, character: Int) {
+    let chars = String(UnicodeScalar(character)!)
+    for type in [NSEvent.EventType.keyDown, .keyUp] {
+        window.sendEvent(NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [.numericPad, .function],
+                                          timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                                          context: nil, characters: chars, charactersIgnoringModifiers: chars,
+                                          isARepeat: false, keyCode: keyCode)!)
+    }
+    settle()
+}
+func pressDown() { press(keyCode: 125, character: NSDownArrowFunctionKey) }
+func pressUp() { press(keyCode: 126, character: NSUpArrowFunctionKey) }
+func currentPane() -> String? { UserDefaults.standard.string(forKey: paneKey) }
+
+showPane(.input)
+pressDown()
+check(currentPane() == SettingsPane.kanaRules.rawValue && highlightedRows() == [4], "sidebar: ↓ moves to the next page")
+pressUp()
+check(currentPane() == SettingsPane.input.rawValue && highlightedRows() == [3], "sidebar: ↑ moves to the previous page")
+showPane(.keys)
+pressDown()
+check(currentPane() == SettingsPane.keys.rawValue, "sidebar: ↓ on the last page stays")
+showPane(.dictionaries)
+pressUp()
+check(currentPane() == SettingsPane.dictionaries.rawValue, "sidebar: ↑ on the first page stays")
+
 // MARK: - Dictionary page (ADR 0006)
 
 showPane(.dictionaries)
@@ -198,6 +229,24 @@ if let present = field(presentDictionary), let missing = field(missingDictionary
     check(false, "dictionaries: location fields are shown")
 }
 
+// A disabled dictionary is written "(無効)" in the secondary colour,
+// not faded to half opacity (ADR 0007)
+if let off = field(disabledDictionary) {
+    let frame = frameInWindow(off), rep = snapshot()
+    let nameStart = frame.minX - 12 - DictionaryRow.kindWidth - 12 - DictionaryRow.nameWidth
+    var darkest: CGFloat = 1
+    for x in stride(from: nameStart, to: nameStart + DictionaryRow.nameWidth, by: 1) {
+        for y in stride(from: frame.midY - 6, to: frame.midY + 6, by: 1) {
+            if let pixel = color(in: rep, at: NSPoint(x: x, y: y)) { darkest = min(darkest, pixel.greenComponent) }
+        }
+    }
+    let secondary = resolved(PreferencesPalette.secondary).greenComponent
+    check(abs(darkest - secondary) < 0.08,
+          String(format: "dictionaries: a disabled row's name is in the secondary colour (darkest %.2f, secondary %.2f)", darkest, secondary))
+} else {
+    check(false, "dictionaries: the disabled dictionary is shown")
+}
+
 // MARK: - Key page (ADR 0006)
 
 showPane(.keys)
@@ -205,6 +254,12 @@ if let bad = field("bad spec") {
     check(bandBelow(bad, contains: PreferencesPalette.error), "keys: an invalid key spec is explained in error text under its field")
 } else {
     check(false, "keys: the invalid override is shown")
+}
+// An overridden key shows its default under the field (ADR 0007)
+if let overridden = field("ctrl::g") {
+    check(bandBelow(overridden, contains: PreferencesPalette.secondary), "keys: an overridden key shows the default under its field")
+} else {
+    check(false, "keys: the valid override is shown")
 }
 
 // MARK: - Romaji rule page (ADR 0006)
