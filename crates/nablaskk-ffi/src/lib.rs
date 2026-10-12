@@ -709,3 +709,85 @@ mod keymap_patch_tests {
         }
     }
 }
+
+/// ADR 0008: the header promises every function tolerates a NULL session
+/// and NULL strings, and that `skk_string_free(NULL)` does nothing.
+#[cfg(test)]
+mod null_contract_tests {
+    use super::*;
+    use std::ptr::{null, null_mut};
+
+    #[test]
+    fn null_session_is_harmless_everywhere() {
+        unsafe {
+            let s: *mut SkkSession = null_mut();
+            let text = CString::new("x").unwrap();
+
+            skk_session_free(s);
+            assert_eq!(skk_session_add_dictionary(s, 0, text.as_ptr()), -1);
+            skk_session_reset_kana_rules(s);
+            skk_session_patch_kana_rules(s, text.as_ptr());
+            skk_session_reset_keymap(s);
+            skk_session_patch_keymap(s, text.as_ptr());
+            skk_session_override_keymap(s, text.as_ptr());
+            skk_session_clear_dictionaries(s);
+            assert_eq!(skk_session_handle(s, b'a', 0, 0), 0);
+            assert_eq!(skk_session_set_input_mode(s, 3), -1);
+            skk_session_set_clipboard(s, text.as_ptr());
+            assert!(skk_session_take_fixed(s).is_null());
+            assert!(skk_session_composing(s).is_null());
+            assert_eq!(skk_session_composing_cursor(s), 0);
+            assert_eq!(skk_session_input_mode(s), 0);
+            skk_session_commit(s);
+            skk_session_clear(s);
+            assert_eq!(skk_session_reload_user_dictionary(s), 0);
+            skk_session_save(s);
+            assert_eq!(skk_session_candidates_visible(s), 0);
+            assert_eq!(skk_session_candidate_count(s), 0);
+            assert!(skk_session_candidate(s, 0).is_null());
+            assert_eq!(skk_session_candidate_cursor(s), 0);
+            assert_eq!(skk_session_candidate_page(s), 0);
+            assert_eq!(skk_session_completion_visible(s), 0);
+            assert_eq!(skk_session_completion_count(s), 0);
+            assert!(skk_session_completion(s, 0).is_null());
+            assert_eq!(skk_session_completion_prefix_length(s), 0);
+            assert!(skk_session_annotation(s).is_null());
+            assert_eq!(skk_session_set_option(s, 0, 1), -1);
+            skk_string_free(null_mut());
+        }
+    }
+
+    #[test]
+    fn null_strings_are_harmless() {
+        unsafe {
+            let path = CString::new(std::env::temp_dir().join("nablaskk-ffi-null-strings").to_str().unwrap()).unwrap();
+            let s = skk_session_new(path.as_ptr());
+            assert!(!s.is_null());
+
+            assert_eq!(skk_session_add_dictionary(s, 0, null()), -1);
+            skk_session_patch_kana_rules(s, null());
+            skk_session_patch_keymap(s, null());
+            skk_session_override_keymap(s, null());
+            skk_session_set_clipboard(s, null());
+            // Out-of-range indices and unknown values
+            assert!(skk_session_candidate(s, -1).is_null());
+            assert!(skk_session_candidate(s, 99).is_null());
+            assert!(skk_session_completion(s, 99).is_null());
+            assert_eq!(skk_session_set_input_mode(s, 99), -1);
+            assert_eq!(skk_session_set_option(s, 999, 1), -1);
+            assert_eq!(skk_session_add_dictionary(s, 99, path.as_ptr()), -1);
+
+            // The engine still works afterwards; returned strings can be freed
+            skk_session_handle(s, b'a', 0, 0);
+            let fixed = skk_session_take_fixed(s);
+            assert_eq!(CStr::from_ptr(fixed).to_str().unwrap(), "あ");
+            skk_string_free(fixed);
+            let composing = skk_session_composing(s);
+            assert!(!composing.is_null());
+            skk_string_free(composing);
+
+            skk_session_free(s);
+        }
+    }
+}
+
