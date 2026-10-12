@@ -53,9 +53,10 @@
 cargo test                    # Rust 全テスト + 受け入れ 400 ケース
 cargo clippy --all-targets    # 警告ゼロを維持
 sh swift/run-smoke-test.sh    # Swift ↔ FFI 実リンクのスモークテスト
-sh macos/run-tests.sh         # NSEvent 変換・ClientQuirks・設定ファイル・ユーザー辞書モデル
+sh macos/run-tests.sh         # NSEvent 変換・ClientQuirks・設定ファイル・ユーザー辞書モデル・IME の判断
 sh macos/run-ui-tests.sh      # 設定アプリの UI(画面外のウィンドウでサイドバーをクリック)
 sh macos/build-app.sh         # NablaSKK.app(設定アプリ同梱、ad-hoc 署名)
+sh macos/check-bundle.sh      # ビルドした .app の中身とバージョン
 ```
 差し替え(作業者が実行する):
 ```

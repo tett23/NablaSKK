@@ -41,18 +41,11 @@ enum Engine {
     /// AquaSKK's sub-rule files (ADR 0003), bundled in Resources.
     static var subRuleDirectory: URL { Bundle.main.resourceURL ?? Bundle.main.bundleURL }
 
-    /// Built-in keymap, then the input style's keymap patch (merged, as
-    /// AquaSKK does), then the user's keymap.conf overrides.
+    /// The stacking order lives in EngineSetup (tested, ADR 0008).
     private static func applyKeymap(to session: SKKSession) {
         loadedKeymapDate = KeymapSettings.modificationDate
-        session.resetKeymap()
-        if let patch = SubRules.keymapText(for: InputSettings.load(), in: subRuleDirectory) {
-            session.patchKeymap(patch)
-        }
-        let overrides = KeymapSettings.load().overrideText
-        if !overrides.isEmpty {
-            session.overrideKeymap(overrides)
-        }
+        EngineSetup.applyKeymap(to: session, settings: InputSettings.load(), keymap: KeymapSettings.load(),
+                                subRuleDirectory: subRuleDirectory)
     }
 
     private static var loadedSettingsDate: Date?
@@ -74,22 +67,11 @@ enum Engine {
 
     private static var loadedKanaRulesDate: Date?
 
-    /// Built-in rules, then the sub-rules (input style, yakumono-ippai,
-    /// old-kana in AquaSKK's order), then the punctuation options, then
-    /// the user's kana-rule.conf (ADR 0003: what the user set wins).
+    /// The stacking order lives in EngineSetup (tested, ADR 0008).
     private static func applyKanaRules(to session: SKKSession, settings: InputSettings) {
         loadedKanaRulesDate = KanaRuleSettings.modificationDate
-        session.resetKanaRules()
-        if let subRules = SubRules.ruleText(for: settings, in: subRuleDirectory) {
-            session.patchKanaRules(subRules)
-        }
-        if !settings.kanaRulePatch.isEmpty {
-            session.patchKanaRules(settings.kanaRulePatch)
-        }
-        let userRules = KanaRuleSettings.load().patchText
-        if !userRules.isEmpty {
-            session.patchKanaRules(userRules)
-        }
+        EngineSetup.applyKanaRules(to: session, settings: settings, userRules: KanaRuleSettings.load(),
+                                   subRuleDirectory: subRuleDirectory)
     }
 
     private static func applyInputSettings(to session: SKKSession) {
@@ -168,25 +150,15 @@ enum DebugLog {
 public class SKKRustInputController: IMKInputController {
     private static weak var activeController: SKKRustInputController?
 
-    /// Input mode each application was last typing in, keyed by bundle
-    /// identifier. The engine session is shared, so switching clients
-    /// resets it to hiragana; an application last used in ASCII mode
-    /// (e.g. Ghostty) gets ASCII back instead.
-    ///
-    /// Recorded after every key rather than on deactivation: the system
-    /// may activate the next client before deactivating the previous one,
-    /// and by then the shared session has already been reset. Keyed per
-    /// application because the system hands out a fresh controller and a
-    /// fresh `uniqueClientIdentifierString` on every activation, even for
-    /// the same window, so nothing finer-grained survives a switch.
-    private static var lastInputModes: [String: SKKSession.InputMode] = [:]
+    /// Per-application ASCII restore; see ClientModeMemory (tested, ADR 0008).
+    private static var clientModes = ClientModeMemory()
 
     private var clientKey: String {
         client()?.bundleIdentifier() ?? "controller-\(ObjectIdentifier(self).hashValue)"
     }
 
     private func recordInputMode() {
-        Self.lastInputModes[clientKey] = Engine.session.inputMode
+        Self.clientModes.recordKey(client: clientKey, mode: Engine.session.inputMode)
     }
 
     public override func activateServer(_ sender: Any!) {
@@ -202,13 +174,13 @@ public class SKKRustInputController: IMKInputController {
             _ = Engine.session.takeFixed()
             Self.activeController = self
 
-            if Self.lastInputModes[clientKey] == .ascii {
-                Engine.session.inputMode = .ascii
+            if let mode = Self.clientModes.modeToRestore(client: clientKey) {
+                Engine.session.inputMode = mode
             }
         }
 
         DebugLog.write {
-            "activate client=\(clientKey) switched=\(switched) remembered=\(Self.lastInputModes[clientKey].map { "\($0)" } ?? "none") "
+            "activate client=\(clientKey) switched=\(switched) restore=\(Self.clientModes.modeToRestore(client: clientKey).map { "\($0)" } ?? "none") "
                 + "mode=\(Engine.session.inputMode)"
         }
     }
@@ -265,10 +237,9 @@ public class SKKRustInputController: IMKInputController {
         let (charcode, keycode, mods) = (key.charcode, key.keycode, key.mods)
 
         // Command shortcuts belong to the application, except Cmd-V while
-        // composing: it pastes into the reading / registration word.
-        let isPaste = (mods == [.meta] && charcode == UInt8(ascii: "v"))
-            || (mods == [.ctrl] && charcode == UInt8(ascii: "y"))
-        if mods.contains(.meta) && !(isPaste && !Engine.session.composing.isEmpty) {
+        // composing (KeyRouting, tested, ADR 0008)
+        let isPaste = KeyRouting.isPaste(charcode: charcode, mods: mods)
+        if KeyRouting.passesToApplication(charcode: charcode, mods: mods, composing: !Engine.session.composing.isEmpty) {
             return false
         }
 
@@ -342,27 +313,13 @@ public class SKKRustInputController: IMKInputController {
 
         var marked = Engine.session.composing
 
-        // Caret position inside the marked text, in UTF-16 units. The engine
-        // reports a character offset from the end of the composing string.
-        let characters = Array(marked)
-        let caretIndex = max(0, min(characters.count, characters.count + Engine.session.composingCursor))
-        let caret = String(characters[..<caretIndex]).utf16.count
-
-        // Candidate window contents are rendered into the marked text
-        // (labels select directly, matching the engine's key handling)
+        // Caret and candidate line: MarkedText (tested, ADR 0008)
+        let caret = MarkedText.caret(composing: marked, cursorFromEnd: Engine.session.composingCursor)
         if Engine.session.candidatesVisible {
-            let candidates = Engine.session.candidates
-            let cursor = Engine.session.candidateCursor
             let (page, pageCount) = Engine.session.candidatePage
-            let labels = "asdfjkl"
-
-            var line = " 【"
-            for (index, candidate) in candidates.enumerated() {
-                let label = labels[labels.index(labels.startIndex, offsetBy: min(index, labels.count - 1))]
-                line += index == cursor ? "▶\(label):\(candidate) " : " \(label):\(candidate) "
-            }
-            line += "】(\(page)/\(pageCount))"
-            marked += line
+            marked += MarkedText.candidateLine(candidates: Engine.session.candidates,
+                                               cursor: Engine.session.candidateCursor,
+                                               page: page, pageCount: pageCount)
         }
 
         setMarkedText(marked, caret: caret, to: client)

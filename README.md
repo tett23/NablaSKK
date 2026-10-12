@@ -277,8 +277,9 @@ macOS 側のテストは次のとおりです(CI の macOS ジョブでも実行
 
 ```sh
 sh swift/run-smoke-test.sh   # Swift ↔ FFI のスモークテスト
-sh macos/run-tests.sh        # キー変換・設定ファイル・ユーザー辞書など
+sh macos/run-tests.sh        # キー変換・設定ファイル・ユーザー辞書・IME の判断(ASCII 復元・規則の積み順など)
 sh macos/run-ui-tests.sh     # 設定アプリの UI(画面外のウィンドウ。利用者の設定には触れない)
+sh macos/check-bundle.sh     # ビルドした .app の中身(規則ファイル・設定アプリ・バージョン)
 ```
 
 ## 本家との差分

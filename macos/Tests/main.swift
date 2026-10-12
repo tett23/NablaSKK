@@ -481,14 +481,9 @@ do {
         let path = NSTemporaryDirectory() + "nablaskk-subrule-user"
         try? FileManager.default.removeItem(atPath: path)
         let s = SKKSession(userDictionaryPath: path)
-        // The input method's order
-        s.resetKanaRules()
-        if let rules = SubRules.ruleText(for: settings, in: data) { s.patchKanaRules(rules) }
-        if !settings.kanaRulePatch.isEmpty { s.patchKanaRules(settings.kanaRulePatch) }
-        if !userRules.patchText.isEmpty { s.patchKanaRules(userRules.patchText) }
-        s.resetKeymap()
-        if let keymap = SubRules.keymapText(for: settings, in: data) { s.patchKeymap(keymap) }
-        if !keymapOverride.isEmpty { s.overrideKeymap(keymapOverride) }
+        // The input method's own stacking (ADR 0008), not a copy of it
+        EngineSetup.applyKanaRules(to: s, settings: settings, userRules: userRules, subRuleDirectory: data)
+        EngineSetup.applyKeymap(to: s, settings: settings, keymap: KeymapSettings.parse(keymapOverride), subRuleDirectory: data)
         return s
     }
     func typed(_ s: SKKSession, _ keys: String) -> String {
@@ -557,11 +552,67 @@ do {
     let jb = KanaRuleSettings(rules: [KanaRule(input: "jb", output: "★")])
     check(jb.conflicts(builtin: withAzik).isEmpty && typed(session(azik, userRules: jb), "jb") == "★",
           "sub-rules: a non-conflicting user rule works with AZIK")
-    let overridden = session(azik, keymapOverride: "ToggleKana\tctrl::t")
+    let overridden = session(azik, keymapOverride: "ToggleKana ctrl::t")
     overridden.handle(charcode: UInt8(ascii: "@"), keycode: 0x21)
     check(overridden.inputMode == .hirakana, "sub-rules: a keymap override replaces AZIK's toggle key")
     overridden.handle(charcode: UInt8(ascii: "t"), mods: [.ctrl])
     check(overridden.inputMode == .katakana, "sub-rules: ...with the user's key")
+}
+
+// Input method decisions extracted for testing (ADR 0008)
+do {
+    // Per-application ASCII restore
+    var memory = ClientModeMemory()
+    check(memory.modeToRestore(client: "com.mitchellh.ghostty") == nil, "client modes: nothing for an app that typed nothing")
+    memory.recordKey(client: "com.mitchellh.ghostty", mode: .ascii)
+    memory.recordKey(client: "com.apple.TextEdit", mode: .hirakana)
+    check(memory.modeToRestore(client: "com.mitchellh.ghostty") == .ascii, "client modes: back to an app left in ASCII restores ASCII")
+    check(memory.modeToRestore(client: "com.apple.TextEdit") == nil, "client modes: an app left in hiragana is left alone")
+    // The next app activates (the shared session resets to hiragana) before
+    // the previous one deactivates: nothing is recorded then, so Ghostty
+    // keeps ASCII (the ordering bug fixed in 5573409)
+    check(memory.modeToRestore(client: "com.mitchellh.ghostty") == .ascii,
+          "client modes: activation order does not lose the previous app's ASCII")
+    // A new window (a new controller) of the same app shares the record
+    check(memory.modeToRestore(client: "com.mitchellh.ghostty") == .ascii, "client modes: keyed by application, not window")
+    memory.recordKey(client: "com.mitchellh.ghostty", mode: .hirakana)
+    check(memory.modeToRestore(client: "com.mitchellh.ghostty") == nil, "client modes: the latest key's mode wins")
+    memory.recordKey(client: "com.mitchellh.ghostty", mode: .katakana)
+    check(memory.modeToRestore(client: "com.mitchellh.ghostty") == nil, "client modes: only ASCII is restored")
+
+    // Command keys
+    let v = UInt8(ascii: "v"), y = UInt8(ascii: "y"), c = UInt8(ascii: "c"), q = UInt8(ascii: "q")
+    check(KeyRouting.passesToApplication(charcode: c, mods: [.meta], composing: false)
+          && KeyRouting.passesToApplication(charcode: q, mods: [.meta], composing: true),
+          "key routing: Cmd-C / Cmd-Q go to the application")
+    check(!KeyRouting.passesToApplication(charcode: v, mods: [.meta], composing: true),
+          "key routing: Cmd-V while composing goes to the engine")
+    check(KeyRouting.passesToApplication(charcode: v, mods: [.meta], composing: false),
+          "key routing: Cmd-V while not composing goes to the application")
+    check(!KeyRouting.passesToApplication(charcode: y, mods: [.ctrl], composing: true)
+          && !KeyRouting.passesToApplication(charcode: y, mods: [.ctrl], composing: false),
+          "key routing: Ctrl-Y is the engine's (not a Command key)")
+    check(!KeyRouting.passesToApplication(charcode: UInt8(ascii: "a"), mods: [], composing: false)
+          && !KeyRouting.passesToApplication(charcode: UInt8(ascii: "j"), mods: [.ctrl], composing: false),
+          "key routing: plain and Ctrl keys go to the engine")
+    check(KeyRouting.isPaste(charcode: v, mods: [.meta]) && KeyRouting.isPaste(charcode: y, mods: [.ctrl])
+          && !KeyRouting.isPaste(charcode: v, mods: [.ctrl]),
+          "key routing: Cmd-V and Ctrl-Y are paste keys")
+
+    // Marked text: caret (UTF-16) and the candidate line
+    check(MarkedText.caret(composing: "▽かんじ", cursorFromEnd: 0) == 4
+          && MarkedText.caret(composing: "▽かんじ", cursorFromEnd: -1) == 3
+          && MarkedText.caret(composing: "▽かんじ", cursorFromEnd: -4) == 0,
+          "marked text: caret at the end, inside and at the start of ▽かんじ")
+    check(MarkedText.caret(composing: "▽かんじ", cursorFromEnd: -9) == 0 && MarkedText.caret(composing: "▽かんじ", cursorFromEnd: 3) == 4,
+          "marked text: out-of-range offsets are clamped")
+    check(MarkedText.caret(composing: "▼👍た", cursorFromEnd: 0) == 4 && MarkedText.caret(composing: "▼👍た", cursorFromEnd: -1) == 3,
+          "marked text: a surrogate pair counts two UTF-16 units")
+    check(MarkedText.candidateLine(candidates: ["漢字", "感じ", "幹事"], cursor: 1, page: 1, pageCount: 2)
+            == " 【 a:漢字 ▶s:感じ  d:幹事 】(1/2)",
+          "marked text: candidate line with labels, the cursor mark and the page")
+    check(MarkedText.candidateLine(candidates: (1...9).map(String.init), cursor: 0, page: 1, pageCount: 1).contains(" l:9 "),
+          "marked text: candidates past the labels reuse the last label")
 }
 
 // Preferences accessibility labels and drag reordering (ADR 0006)

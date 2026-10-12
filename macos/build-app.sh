@@ -22,6 +22,7 @@ SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Shared/KeymapConfig.swift \
     macos/Shared/KanaRuleConfig.swift \
     macos/Shared/SubRules.swift \
+    macos/Sources/InputMethodLogic.swift \
     macos/Sources/KeyTranslator.swift \
     macos/Sources/ClientQuirks.swift \
     macos/Sources/CompletionWindow.swift \
