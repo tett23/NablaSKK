@@ -109,6 +109,9 @@ jobs:
       - name: Build NablaSKK.app (universal)
         run: UNIVERSAL=1 SIGN_IDENTITY="${MACOS_SIGN_IDENTITY:--}" sh macos/build-app.sh
 
+      - name: Check bundle contents
+        run: sh macos/check-bundle.sh
+
       - name: Notarize and staple
         if: env.MACOS_CERT_P12 != '' && env.NOTARY_APPLE_ID != ''
         run: |
