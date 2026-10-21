@@ -13,11 +13,15 @@
   登録し、メニューバーの表示を今のモードに合わせて切り替える。
 - **設定アプリでオプションを変えられるようにする**: egg-like-newline など、本家の
   設定項目のうち、まだ設定アプリにないものを足す。
-- **設定アプリにアイコンを付ける**: 今は設定アプリの `Info.plist` にアイコンの指定が
-  なく、Dock や Finder では汎用のアイコンになる。アイコン(`.icns`)を用意して
-  `CFBundleIconFile` で指定し、`macos/build-app.sh` で同梱して `macos/check-bundle.sh`
-  でも確かめる。絵柄を新しく描くか、本家 AquaSKK のものを元にするかと、素材のライセンスは
-  ADR で決める。
+- **設定アプリと入力メニューにアイコンを付ける**: 今は設定アプリにも IME 本体にも
+  アイコンの指定がなく、Dock や Finder、入力メニューでは汎用のアイコンになる。
+  - 設定アプリ: アイコン(`.icns`)を用意して `CFBundleIconFile` で指定する。
+  - IME 本体: 入力メニュー(メニューバー)に出すアイコンを用意して、`Info.plist` の
+    `tsInputMethodIconFileKey` で指定する。入力モードごとに入力ソースを登録する場合は、
+    モードごとのアイコンもあわせて決める。
+  - どちらも `macos/build-app.sh` で同梱し、`macos/check-bundle.sh` でも確かめる。
+  - 絵柄を新しく描くか、本家 AquaSKK のものを元にするかと、素材のライセンスは ADR で
+    決める。
 - **Nix で配布する**: Apple Developer Program の費用を払い続けられないので、
   Developer ID の署名と公証はしない。Homebrew の cask は公証していないアプリを
   入れにくいので、Nix(flake。nix-darwin と home-manager から使えるようにする)で
