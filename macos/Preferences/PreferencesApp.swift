@@ -63,6 +63,12 @@ struct RootView: View {
                     SidebarItem(pane: item, selection: $selectedPane)
                 }
                 Spacer()
+                // Which build is running (ADR 0013); not a page, so ↑↓ skip it
+                Text(AppVersion.display(Bundle.main.infoDictionary ?? [:]))
+                    .font(.caption)
+                    .foregroundColor(.prefSecondary)
+                    .textSelection(.enabled)
+                    .accessibilityLabel(AppVersion.accessibilityLabel(Bundle.main.infoDictionary ?? [:]))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 12)

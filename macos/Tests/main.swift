@@ -701,6 +701,19 @@ do {
     check(session.inputMode == .katakana, "mode: set to katakana")
 }
 
+// ADR 0013: the version shown at the bottom of the preferences sidebar
+check(AppVersion.display(["CFBundleShortVersionString": "1.2.0", "NablaSKKCommit": "8128940"]) == "NablaSKK 1.2.0 (8128940)",
+      "version: version and commit")
+check(AppVersion.display(["CFBundleShortVersionString": "1.2.0"]) == "NablaSKK 1.2.0"
+      && AppVersion.display(["CFBundleShortVersionString": "1.2.0", "NablaSKKCommit": ""]) == "NablaSKK 1.2.0",
+      "version: no commit, no parentheses")
+check(AppVersion.display(["CFBundleShortVersionString": "1.2.0", "NablaSKKCommit": "8128940+"]) == "NablaSKK 1.2.0 (8128940+)",
+      "version: uncommitted changes are shown as written")
+check(AppVersion.display([:]) == "NablaSKK", "version: nothing known")
+check(AppVersion.accessibilityLabel(["CFBundleShortVersionString": "1.2.0", "NablaSKKCommit": "8128940"]) == "バージョン 1.2.0、コミット 8128940"
+      && AppVersion.accessibilityLabel(["CFBundleShortVersionString": "1.2.0"]) == "バージョン 1.2.0",
+      "version: VoiceOver label")
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)

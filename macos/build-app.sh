@@ -36,6 +36,7 @@ PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
     macos/Shared/KanaRuleConfig.swift \
     macos/Shared/SubRules.swift \
     macos/Shared/PreferencesAccessibility.swift \
+    macos/Shared/AppVersion.swift \
     macos/Preferences/PreferencesPalette.swift \
     macos/Preferences/ReorderableRows.swift \
     macos/Preferences/PreferencesApp.swift \
@@ -69,6 +70,17 @@ build_prefs() {
         -o "$2"
 }
 
+# The commit this build comes from, written into both Info.plists and
+# shown in the preferences app (ADR 0013). "+" marks uncommitted changes;
+# without git the key is left out.
+BUILD_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || true)"
+if [ -n "$BUILD_COMMIT" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    BUILD_COMMIT="$BUILD_COMMIT+"
+fi
+stamp_commit() {
+    [ -z "$BUILD_COMMIT" ] || /usr/libexec/PlistBuddy -c "Add :NablaSKKCommit string $BUILD_COMMIT" "$1"
+}
+
 # The preferences app lives inside the input method bundle so a single
 # copy installs both.
 # AquaSKK's sub-rules (ADR 0003): read by the input method and, for the
@@ -81,6 +93,7 @@ copy_sub_rules() {
 prepare_prefs_bundle() {
     mkdir -p "$PREFS_APP/Contents/MacOS"
     cp macos/Preferences/Info.plist "$PREFS_APP/Contents/Info.plist"
+    stamp_commit "$PREFS_APP/Contents/Info.plist"
     # Built-in rules, to show which one a user rule replaces
     mkdir -p "$PREFS_APP/Contents/Resources"
     cp data/kana-rule.utf8.conf "$PREFS_APP/Contents/Resources/"
@@ -132,6 +145,7 @@ else
 fi
 
 cp macos/Info.plist "$CONTENTS/Info.plist"
+stamp_commit "$CONTENTS/Info.plist"
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 copy_sub_rules "$CONTENTS/Resources"
 
