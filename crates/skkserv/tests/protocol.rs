@@ -50,23 +50,32 @@ fn dictionary(name: &str, euc: bool) -> PathBuf {
     path
 }
 
-/// Start skkserv with `args` on a port the OS picked, and wait until it accepts.
+/// Start skkserv with `args` on a port the OS picked. The port is free when
+/// picked but another test may take it before skkserv binds, so wait for
+/// skkserv's own "listening" line (not just any listener on the port) and
+/// pick another port if it could not bind.
 fn start(args: &[&str]) -> Server {
-    let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
-    let child = Command::new(env!("CARGO_BIN_EXE_skkserv"))
-        .args(["-p", &port.to_string(), "-l", "127.0.0.1"])
-        .args(args)
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("skkserv starts");
-    let server = Server { child, port };
-    for _ in 0..100 {
-        if TcpStream::connect(("127.0.0.1", port)).is_ok() {
-            return server;
+    for _ in 0..20 {
+        let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let mut child = Command::new(env!("CARGO_BIN_EXE_skkserv"))
+            .args(["-p", &port.to_string(), "-l", "127.0.0.1"])
+            .args(args)
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("skkserv starts");
+        let mut stderr = BufReader::new(child.stderr.take().unwrap());
+        let mut line = String::new();
+        while stderr.read_line(&mut line).unwrap_or(0) > 0 && !line.contains("listening on") && !line.contains("can't listen") {
+            line.clear();
         }
-        std::thread::sleep(Duration::from_millis(50));
+        if line.contains("listening on") {
+            // Keep draining so session logs never fill the pipe
+            std::thread::spawn(move || std::io::copy(&mut stderr, &mut std::io::sink()));
+            return Server { child, port };
+        }
+        let _ = child.wait();
     }
-    panic!("skkserv did not start listening on {port}");
+    panic!("skkserv could not find a free port");
 }
 
 /// One protocol round trip. `request` is UTF-8; the wire is EUC-JP.
