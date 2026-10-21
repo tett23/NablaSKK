@@ -325,9 +325,8 @@ public class SKKRustInputController: IMKInputController {
     /// nothing left behind (ADR 0010).
     private func maskKeyEvent(for client: IMKTextInput, replacing: Bool) {
         let none = NSRange(location: NSNotFound, length: NSNotFound)
-        // VSCode: the caret goes after the mark, so Monaco reports a plain
-        // insertion VSCodeVim can follow (VSCodeVim#10111)
-        let caret = NSRange(location: replacing ? 1 : 0, length: 0)
+        let caret = NSRange(
+            location: ClientQuirks.maskCaret(replacing ? .zeroWidthSpaceReplaced : .zeroWidthSpace), length: 0)
         client.setMarkedText("\u{200B}", selectionRange: caret, replacementRange: none)
 
         DispatchQueue.main.async { [weak self] in

@@ -106,4 +106,11 @@ enum ClientQuirks {
         case .keyEvents: return committed ? .markThenCommit : .zeroWidthSpaceReplaced
         }
     }
+
+    /// Caret position (UTF-16) inside the zero-width space mark. VSCode gets
+    /// the caret after it, the combination confirmed to leave nothing in
+    /// the editor; why it helps is unverified (ADR 0011).
+    static func maskCaret(_ masking: Masking) -> Int {
+        masking == .zeroWidthSpaceReplaced ? 1 : 0
+    }
 }

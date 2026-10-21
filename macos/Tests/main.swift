@@ -120,6 +120,9 @@ check(masking(.controlKeys, hasControl: true) == .zeroWidthSpace && masking(.con
       && masking(.controlKeys, committed: true, hasControl: true) == .none,
       "chromium: unchanged under masking()")
 check(masking(.none, hasControl: true) == .none, "native: unchanged under masking()")
+// ADR 0011: where the caret goes in the zero-width space mask
+check(ClientQuirks.maskCaret(.zeroWidthSpaceReplaced) == 1, "vscode: caret after the zero-width space")
+check(ClientQuirks.maskCaret(.zeroWidthSpace) == 0, "ghostty / chromium: caret before the zero-width space")
 
 // The engine side of the Ghostty case: `l` is consumed and produces nothing
 do {

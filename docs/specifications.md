@@ -45,8 +45,10 @@
   対策がある(Ghostty はすべてのキー、Chromium 系は Ctrl 付きのキー)。
   VSCode(Insiders、VSCodium を含む)は、IME が 1 キーで確定した文字(`a` → `あ`)
   もキーのまま受け取るので、確定する文字をいったんマークテキストにしてから確定する。
-  文字を出さずに処理したキーは、ゼロ幅スペースをマークテキストにして隠し、後で
-  空の文字列で置き換える([ADR 0010](adr/0010-vscode-key-handling.md))。
+  文字を出さずに処理したキーは、ゼロ幅スペースをマークテキストにして隠し(キャレットは
+  ゼロ幅スペースの後ろ)、後で空の文字列で置き換える([ADR 0010](adr/0010-vscode-key-handling.md)、
+  [ADR 0011](adr/0011-correct-adr-0010-unverified-causes.md))。VSCode がなぜキーのまま
+  受け取るのかは、実機で確かめていない([ADR 0010](adr/0010-vscode-key-handling.md) の仮説は推測のまま)。
 
 ## 4. 辞書
 
