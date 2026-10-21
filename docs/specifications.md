@@ -20,6 +20,13 @@
 ## 3. 入力
 
 - 入力モード: ひらがな / カタカナ / 半角カナ / 英数(ASCII)/ 全角英数。
+- macOS 版の入力ソースは 1 つだけ(本家の「AquaSKK 統合」に当たる)で、入力モードは IME の中で
+  切り替える。本家の入力モードごとの入力ソース(「ひらかな」「カタカナ」「半角カナ」
+  「全角英数」「ASCII」、互換入力メニュー)はサポートしない。エンジンの入力モードの扱いと、
+  外からモードを読み書きする API(`skk_session_set_input_mode` など)は、ほかのホストのために
+  残す([ADR 0014](adr/0014-app-and-input-menu-icons.md))。
+- 入力メニューのアイコンは ∇ の単色(テンプレート画像、`MenuIcon.tiff`)で、メニューバーの
+  明暗に合わせて macOS が色を付ける([ADR 0014](adr/0014-app-and-input-menu-icons.md))。
 - キー操作は本家の `keymap.conf`(`data/keymap.conf`)に従う。主なもの:
   Ctrl-J でかなモード、`l` で英数、`L` で全角英数、`q` でひらがな⇔カタカナ、
   Ctrl-Q で半角カナ、`/` で abbrev、大文字で▽変換開始、スペース / `x` で候補送り・戻し、
@@ -131,7 +138,9 @@ AquaSKK の `SKK-JISYO.L` があればそれを使う。1 行に「タイプ 場
 
 ## 6. 設定アプリ
 
-入力メニューの「NablaSKK の設定...」で開く。左のサイドバーでページを選ぶ
+入力メニューの「NablaSKK の設定...」で開く。アイコンは紺の地に金色の ∇(`AppIcon.icns`、
+[ADR 0014](adr/0014-app-and-input-menu-icons.md)。元の絵は `macos/icons/` の SVG で、`macos/make-icons.sh` が `sips` で
+画像にする。[ADR 0015](adr/0015-render-icons-with-sips.md))。左のサイドバーでページを選ぶ
 (最後に開いたページを覚える)。ページを選ぶとサイドバーにキーボードのフォーカスが移り、
 ↑↓ キーで前後のページへ移れる(端では止まる。[ADR 0007](adr/0007-preferences-accessibility-followups.md))。
 サイドバーの一番下に、設定アプリのバージョンとビルドしたコミットを

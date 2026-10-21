@@ -4,8 +4,8 @@
 # Checks that a built NablaSKK.app has everything it needs at run time
 # (ADR 0008): the executables, the sub-rule files the IME and the
 # preferences app load, the bundled preferences app, an Info.plist
-# version matching Cargo.toml, and the same build commit in both
-# Info.plists (ADR 0013).
+# version matching Cargo.toml, the same build commit in both
+# Info.plists (ADR 0013), and the icons (ADR 0014).
 #
 #   sh macos/check-bundle.sh [path/to/NablaSKK.app]
 set -eu
@@ -27,6 +27,16 @@ for f in $SUB_RULES; do need "$APP/Contents/Resources/$f"; done
 need "$PREFS/Contents/Info.plist"
 [ -x "$PREFS/Contents/MacOS/NablaSKK Preferences" ] || fail "missing executable: NablaSKK Preferences"
 for f in $SUB_RULES kana-rule.utf8.conf; do need "$PREFS/Contents/Resources/$f"; done
+
+# ADR 0014: icons for the preferences app (Dock, Finder) and the input menu
+plist_value() { /usr/libexec/PlistBuddy -c "Print :$2" "$1" 2>/dev/null || echo "-"; }
+need "$APP/Contents/Resources/AppIcon.icns"
+need "$APP/Contents/Resources/MenuIcon.tiff"
+need "$PREFS/Contents/Resources/AppIcon.icns"
+[ "$(plist_value "$APP/Contents/Info.plist" CFBundleIconFile)" = "AppIcon" ] || fail "Info.plist: CFBundleIconFile"
+[ "$(plist_value "$APP/Contents/Info.plist" tsInputMethodIconFileKey)" = "MenuIcon.tiff" ] || fail "Info.plist: tsInputMethodIconFileKey"
+[ "$(plist_value "$APP/Contents/Info.plist" TISIconIsTemplate)" = "true" ] || fail "Info.plist: TISIconIsTemplate"
+[ "$(plist_value "$PREFS/Contents/Info.plist" CFBundleIconFile)" = "AppIcon" ] || fail "preferences Info.plist: CFBundleIconFile"
 
 # ADR 0013: both apps come from the same commit (or neither has one)
 commit_of() { /usr/libexec/PlistBuddy -c "Print :NablaSKKCommit" "$1" 2>/dev/null || echo "-"; }

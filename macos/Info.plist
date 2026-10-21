@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ja</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleExecutable</key>
 	<string>NablaSKK</string>
 	<key>CFBundleIdentifier</key>
@@ -26,10 +28,14 @@
 	<true/>
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
+	<key>TISIconIsTemplate</key>
+	<true/>
 	<key>TISInputSourceID</key>
 	<string>jp.tett23.inputmethod.nablaskk</string>
 	<key>TISIntendedLanguage</key>
 	<string>ja</string>
+	<key>tsInputMethodIconFileKey</key>
+	<string>MenuIcon.tiff</string>
 	<key>tsInputMethodCharacterRepertoireKey</key>
 	<array>
 		<string>ja</string>

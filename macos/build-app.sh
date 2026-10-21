@@ -97,6 +97,8 @@ prepare_prefs_bundle() {
     # Built-in rules, to show which one a user rule replaces
     mkdir -p "$PREFS_APP/Contents/Resources"
     cp data/kana-rule.utf8.conf "$PREFS_APP/Contents/Resources/"
+    # Dock and Finder icon (ADR 0014)
+    cp macos/icons/AppIcon.icns "$PREFS_APP/Contents/Resources/"
     copy_sub_rules "$PREFS_APP/Contents/Resources"
     printf 'APPL????' > "$PREFS_APP/Contents/PkgInfo"
 }
@@ -148,6 +150,8 @@ cp macos/Info.plist "$CONTENTS/Info.plist"
 stamp_commit "$CONTENTS/Info.plist"
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 copy_sub_rules "$CONTENTS/Resources"
+# Finder icon and the input menu's template icon (ADR 0014)
+cp macos/icons/AppIcon.icns macos/icons/MenuIcon.tiff "$CONTENTS/Resources/"
 
 # Developer ID signing when SIGN_IDENTITY is set; ad-hoc otherwise.
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
