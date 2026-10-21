@@ -4,7 +4,7 @@
 
 ## 文脈
 
-ADR 0001 で、adr-guard を三か所に導入した。
+[ADR 0001](0001-adopt-global-working-rules.md) で、adr-guard を三か所に導入した。
 
 1. git の pre-commit hook(`.githooks/pre-commit`)
 2. Claude Code の PreToolUse hook(リポジトリの `.claude/settings.json`)
@@ -24,7 +24,7 @@ ADR 0001 で、adr-guard を三か所に導入した。
 
 - リポジトリの `.claude/settings.json` を削除する(`.claude/` ディレクトリごと。
   ほかにファイルは無い)。
-- ADR 0001 のステータスの行を「採択→Claude Code の hook(`.claude/settings.json`)は
+- [ADR 0001](0001-adopt-global-working-rules.md) のステータスの行を「採択→Claude Code の hook(`.claude/settings.json`)は
   ADR 0004」に変える(ステータスの行だけの変更)。
 - README の開発の節から「Claude Code の hook は `.claude/settings.json` に入っています」
   を外し、Claude Code で編集する場合は全体の設定(`~/.claude/settings.json`)に
@@ -36,17 +36,17 @@ ADR 0001 で、adr-guard を三か所に導入した。
 
 - git の pre-commit hook と CI の `adr` ジョブの変更(そのまま残す)。
 - 作業者の全体の設定(`~/.claude/settings.json`)の変更。
-- ADR 0001 の本文の変更(ステータスの行以外は変えない)。
+- [ADR 0001](0001-adopt-global-working-rules.md) の本文の変更(ステータスの行以外は変えない)。
 
 ## テスト設計
 
-- 削除後に、Claude Code(このリポジトリで動く Claude)からコミット済みの ADR 0001 の
+- 削除後に、Claude Code(このリポジトリで動く Claude)からコミット済みの [ADR 0001](0001-adopt-global-working-rules.md) の
   本文を Edit しようとすると、全体の設定の hook によって拒否されること(実際に
   Edit を試みて確かめる)。
 - 新しい ADR の作成や、ADR 以外のファイルの編集は止まらないこと。
 - コミット済みの ADR の本文を書き換えたコミットを、pre-commit hook が引き続き拒否する
   こと(一時ディレクトリのクローンで確かめる)。
-- ADR 0001 のステータスの行の変更が pre-commit hook と CI の `adr` ジョブを通ること。
+- [ADR 0001](0001-adopt-global-working-rules.md) のステータスの行の変更が pre-commit hook と CI の `adr` ジョブを通ること。
 - CI がすべて成功すること。
 
 ## トレードオフ

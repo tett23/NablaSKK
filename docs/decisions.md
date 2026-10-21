@@ -1,7 +1,7 @@
 # 決定事項と却下したアプローチ
 
 > **このファイルは ADR 導入前(v1.0.1 まで)の記録で、以後は追記しない。**
-> 新しい判断は `docs/adr/` に ADR として記録する(ADR 0001)。
+> 新しい判断は `docs/adr/` に ADR として記録する([ADR 0001](adr/0001-adopt-global-working-rules.md))。
 > 現在の仕様は `docs/specifications.md` を参照。
 
 「なぜそうなっているか」を残すためのファイル。時系列は `git log` を見る。

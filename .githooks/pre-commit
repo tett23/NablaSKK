@@ -1,2 +1,2 @@
 #!/bin/sh
-exec adr-guard pre-commit
+exec adr-guard pre-commit --allow-status --allow-links

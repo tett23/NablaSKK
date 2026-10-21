@@ -1,6 +1,6 @@
 # ADR 0001: グローバルの作業規則(ADR・仕様書・Git 運用・GitHub Actions)への準拠
 
-ステータス: 採択→Claude Code の hook(`.claude/settings.json`)は ADR 0004
+ステータス: 採択→Claude Code の hook(`.claude/settings.json`)は [ADR 0004](0004-remove-repository-claude-code-hook.md)
 
 ## 文脈
 

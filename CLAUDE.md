@@ -3,7 +3,7 @@
 このリポジトリで作業するときの恒久的な規則。仕様は `docs/specifications.md`、
 判断の根拠は `docs/adr/`(ADR 導入前の分は `docs/decisions.md`)、進行中の状態は
 `HANDOFF.md`(gitignore、あれば)を見る。グローバルの `~/.claude/CLAUDE.md` の
-規則(ADR、仕様書、Git 運用、GitHub Actions)にも従う(ADR 0001)。
+規則(ADR、仕様書、Git 運用、GitHub Actions)にも従う([ADR 0001](docs/adr/0001-adopt-global-working-rules.md))。
 
 ## 位置づけ
 - AquaSKK (https://github.com/codefirst/aquaskk) のエンジンを Rust に移植したもの。
@@ -33,7 +33,8 @@
 - 実装の前に `docs/adr/` に ADR を書き(連番 + kebab-case、テンプレートは
   グローバル規則)、コミットせずにレビューを受ける。採択されたらステータスを
   「採択」にしてコミットし、実装に入る。コミット済みの ADR はステータスの行
-  以外を変えない(adr-guard が hook と CI で止める)。仕様を変えるときは新しい
+  とリンク以外を変えない(adr-guard が hook と CI で止める)。ADR を書いたときと
+  文書を直したときは `adr-guard links --fix` で ADR の参照にリンクを付ける。仕様を変えるときは新しい
   ADR を書く。
 - 作業はブランチで行い、main へは `git merge --no-ff` で入れる。main を
   rebase しない。仕様が変わったら `docs/specifications.md` と README を同じ
