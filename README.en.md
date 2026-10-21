@@ -56,9 +56,11 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
 ```
 
 1. Log out and log back in (if an older version is already running, `pkill NablaSKK` also
-   works).
+   works). If the input menu icon in the menu bar does not change after an update,
+   `killall TextInputMenuAgent` redraws it.
 2. In "System Settings → Keyboard → Input Sources → Edit → +", add **NablaSKK** from
-   "Japanese".
+   "Japanese". NablaSKK is a single input source; input modes such as hiragana, katakana and
+   ASCII are switched inside NablaSKK (the same way as AquaSKK's "AquaSKK 統合" (unified)).
 3. Set up dictionaries with **"NablaSKK の設定..."** (NablaSKK Settings) in the input source
    menu in the menu bar; it opens the preferences app. You can add dictionary files by
    dragging them into the window, turn them on and off with the checkboxes, and change the
@@ -310,6 +312,11 @@ sh macos/check-bundle.sh     # contents of the built .app (rule files, the prefe
 ```
 
 ## Differences from AquaSKK
+
+- There is only one macOS input source, corresponding to AquaSKK's "AquaSKK 統合" (unified).
+  AquaSKK's per-mode input sources ("ひらかな", "カタカナ", "半角カナ", "全角英数", "ASCII")
+  are not supported. The engine keeps its input-mode handling so that hosts other than macOS
+  can use it ([ADR 0014](docs/adr/0014-app-and-input-menu-icons.md)).
 
 - Dictionary files may be UTF-8 as well as EUC-JP, detected per file (the `coding:` cookie
   first, then the contents). The user dictionary keeps the encoding of the existing file when

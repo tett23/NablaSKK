@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- NablaSKK preferences app icon (ADR 0014). Written by tett23, 2026.
+       License: GPL-2.0-or-later. Regenerate the images with sh macos/make-icons.sh. -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A3A5E"/><stop offset="1" stop-color="#1A253F"/></linearGradient></defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#g)" stroke="#121A2E" stroke-width="4"/>
+  <path d="M250 300 H774 L512 790 Z M352 352 L512 650 L560 560 L438 352 Z" fill="#E8C77A" fill-rule="evenodd"/>
+</svg>
