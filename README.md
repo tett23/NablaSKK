@@ -1,5 +1,7 @@
 # NablaSKK
 
+日本語 | [English](README.en.md)
+
 [AquaSKK](https://github.com/codefirst/aquaskk) の入力エンジン(C++ 約22,000行)を
 Rust で再実装したものです。外部クレート依存はありません(zero dependencies)。
 
