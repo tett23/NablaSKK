@@ -13,4 +13,7 @@
   登録し、メニューバーの表示を今のモードに合わせて切り替える。
 - **設定アプリでオプションを変えられるようにする**: egg-like-newline など、本家の
   設定項目のうち、まだ設定アプリにないものを足す。
-- **Homebrew tap**: `brew install` でアプリと CLI ツールを入れられるようにする。
+- **Nix で配布する**: Apple Developer Program の費用を払い続けられないので、
+  Developer ID の署名と公証はしない。Homebrew の cask は公証していないアプリを
+  入れにくいので、Nix(flake。nix-darwin と home-manager から使えるようにする)で
+  アプリと CLI ツールを入れる方法を用意し、README で案内する。
