@@ -134,6 +134,11 @@ AquaSKK の `SKK-JISYO.L` があればそれを使う。1 行に「タイプ 場
 入力メニューの「NablaSKK の設定...」で開く。左のサイドバーでページを選ぶ
 (最後に開いたページを覚える)。ページを選ぶとサイドバーにキーボードのフォーカスが移り、
 ↑↓ キーで前後のページへ移れる(端では止まる。[ADR 0007](adr/0007-preferences-accessibility-followups.md))。
+サイドバーの一番下に、設定アプリのバージョンとビルドしたコミットを
+`NablaSKK 1.2.0 (8128940)` の形で表示する(コミットは `macos/build-app.sh` が両方の
+`Info.plist` の `NablaSKKCommit` に書く。未コミットの変更があれば末尾に `+`)。選択して
+コピーでき、VoiceOver では「バージョン 1.2.0、コミット 8128940」と読む
+([ADR 0013](adr/0013-show-version-in-preferences.md))。
 
 アクセシビリティ([ADR 0006](adr/0006-preferences-accessibility-fixes.md)): アイコンだけのボタンや名前のない部品には日本語の
 読み上げラベルを付ける。注意・エラー・補足の文字は、ライト・ダークの両方で背景との

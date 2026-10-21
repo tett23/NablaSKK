@@ -57,6 +57,8 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    ドラッグ&ドロップで追加でき、チェックボックスで有効/無効を切り替え、
    ドラッグや矢印ボタンで検索順を並べ替えられます。変更は即座に保存され、
    次にどこかのアプリで入力を始めたときに反映されます。
+   設定アプリのサイドバーの一番下に、バージョンとビルドしたコミットが出ます
+   (`NablaSKK 1.2.0 (8128940)`)。不具合を報告するときに添えてください。
 
    設定の実体は `~/Library/Application Support/NablaSKK/dictionaries.conf`
    で、手で編集しても構いません(初回起動時に生成。既存 AquaSKK の

@@ -3,8 +3,9 @@
 #
 # Checks that a built NablaSKK.app has everything it needs at run time
 # (ADR 0008): the executables, the sub-rule files the IME and the
-# preferences app load, the bundled preferences app, and an Info.plist
-# version matching Cargo.toml.
+# preferences app load, the bundled preferences app, an Info.plist
+# version matching Cargo.toml, and the same build commit in both
+# Info.plists (ADR 0013).
 #
 #   sh macos/check-bundle.sh [path/to/NablaSKK.app]
 set -eu
@@ -27,6 +28,12 @@ need "$PREFS/Contents/Info.plist"
 [ -x "$PREFS/Contents/MacOS/NablaSKK Preferences" ] || fail "missing executable: NablaSKK Preferences"
 for f in $SUB_RULES kana-rule.utf8.conf; do need "$PREFS/Contents/Resources/$f"; done
 
+# ADR 0013: both apps come from the same commit (or neither has one)
+commit_of() { /usr/libexec/PlistBuddy -c "Print :NablaSKKCommit" "$1" 2>/dev/null || echo "-"; }
+ime_commit="$(commit_of "$APP/Contents/Info.plist")"
+prefs_commit="$(commit_of "$PREFS/Contents/Info.plist")"
+[ "$ime_commit" = "$prefs_commit" ] || fail "commit: Info.plist $ime_commit, preferences $prefs_commit"
+
 expected="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -n 1)"
 for plist in "$APP/Contents/Info.plist" "$PREFS/Contents/Info.plist"; do
     actual="$(version_of "$plist")"
@@ -37,4 +44,4 @@ if [ "$failures" -ne 0 ]; then
     echo "FAIL $failures bundle check(s): $APP"
     exit 1
 fi
-echo "PASS bundle check: $APP ($expected)"
+echo "PASS bundle check: $APP ($expected, commit $ime_commit)"
