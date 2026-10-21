@@ -17,8 +17,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: tett23/adr-guard@v0.1.0
+      - uses: tett23/adr-guard@v0.8.2
         with:
+          allow-status: true
+          allow-links: true
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 

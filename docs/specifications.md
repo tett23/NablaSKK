@@ -1,7 +1,7 @@
 # NablaSKK 仕様
 
 利用者・組み込み側から見える NablaSKK の仕様。main で常に最新に保つ
-(ADR 0001)。判断の経緯は `docs/adr/`(ADR 導入前は `docs/decisions.md`)を
+([ADR 0001](adr/0001-adopt-global-working-rules.md))。判断の経緯は `docs/adr/`(ADR 導入前は `docs/decisions.md`)を
 参照する。ここに書いた内容と実装が食い違う場合は、どちらかを直す。
 
 ## 1. 位置づけ
@@ -25,7 +25,7 @@
   Ctrl-Q で半角カナ、`/` で abbrev、大文字で▽変換開始、スペース / `x` で候補送り・戻し、
   Enter / Ctrl-J で確定、Ctrl-G / Esc で取り消し、`X` で候補の削除、Ctrl-/ で確定の取り消し。
 - ローマ字かな変換は本家の `kana-rule.conf`(`data/kana-rule.utf8.conf`)に従う。
-- 本家の補助ルールを選べる(ADR 0003)。入力方式は標準 / AZIK(JIS 配列)/
+- 本家の補助ルールを選べる([ADR 0003](adr/0003-select-azik-or-act-input-style.md))。入力方式は標準 / AZIK(JIS 配列)/
   AZIK(US 配列)/ ACT から一つ。これと独立に、記号入力(yakumono-ippai、
   `z1` → ○ など)と旧かな(old-kana、`wi` → ゐ など)を足せる。ルールとキーマップ差分は
   本家の `data/` のファイル(EUC-JP)をアプリに同梱して使う。
@@ -123,15 +123,15 @@ AquaSKK の `SKK-JISYO.L` があればそれを使う。1 行に「タイプ 場
 
 入力メニューの「NablaSKK の設定...」で開く。左のサイドバーでページを選ぶ
 (最後に開いたページを覚える)。ページを選ぶとサイドバーにキーボードのフォーカスが移り、
-↑↓ キーで前後のページへ移れる(端では止まる。ADR 0007)。
+↑↓ キーで前後のページへ移れる(端では止まる。[ADR 0007](adr/0007-preferences-accessibility-followups.md))。
 
-アクセシビリティ(ADR 0006): アイコンだけのボタンや名前のない部品には日本語の
+アクセシビリティ([ADR 0006](adr/0006-preferences-accessibility-fixes.md)): アイコンだけのボタンや名前のない部品には日本語の
 読み上げラベルを付ける。注意・エラー・補足の文字は、ライト・ダークの両方で背景との
 コントラスト比 4.5:1 以上の色にする。誤りは色とツールチップだけでなく文でも示す。
 一覧の中の入力欄は 1 回のクリックで入力できる。一覧の行は、行の空いたところか名前の
 クリック、または「{名前}を選択」ボタン(フルキーボードアクセス・VoiceOver)で選ぶ。
 無効にした辞書は名前の後ろに「(無効)」と書き、補足の色で表示する。「キー」ページで
-上書きしたキーは、欄の下に既定のキーを表示する(ADR 0007)。
+上書きしたキーは、欄の下に既定のキーを表示する([ADR 0007](adr/0007-preferences-accessibility-followups.md))。
 
 | ページ | 内容 |
 |---|---|
@@ -169,9 +169,11 @@ C ABI。正は `crates/nablaskk-ffi/include/nablaskk.h`、Swift ラッパーは
 ## 10. 開発とリリース
 
 - 設計判断は実装の前に `docs/adr/` に ADR として書き、レビューを受けてから
-  コミットする。コミット済みの ADR はステータスの行以外を変えない(adr-guard が
+  コミットする。コミット済みの ADR はステータスの行と ADR の参照へのリンク以外を
+  変えない。`docs/audit/` の監査記録はコミット後に変えない(adr-guard が
   git の pre-commit hook と CI で検査する。Claude Code の hook は利用者の全体の設定
-  `~/.claude/settings.json` で入れる)。
+  `~/.claude/settings.json` で入れる)。文書の中の ADR の参照にはリンクを付ける
+  (CI の adr-guard が検査する)。
 - 作業はブランチで行い、main へは `--no-ff` でマージする。main を rebase しない。
 - `v` で始まるタグを push すると CI がリリースの下書きを作る。タグ名に `-` を
   含む場合(`v1.1.0-rc` など)はプレリリースになる。リリースノートには追加・削除した

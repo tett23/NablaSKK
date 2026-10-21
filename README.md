@@ -249,8 +249,11 @@ git tag v1.1.0 && git push origin v1.1.0
 
 仕様は [docs/specifications.md](docs/specifications.md) にまとめています。
 設計判断は実装の前に `docs/adr/` に ADR として書きます。コミット済みの ADR は
-ステータスの行以外を変更できません([adr-guard](https://github.com/tett23/adr-guard)
-で検査)。作業はブランチで行い、main へは `--no-ff` でマージします。
+ステータスの行と、ADR の参照へのリンク以外を変更できません。`docs/audit/` の監査記録は
+コミット後に変更できません([adr-guard](https://github.com/tett23/adr-guard)
+で検査)。文書の中の「[ADR 0001](docs/adr/0001-adopt-global-working-rules.md)」のような参照には ADR へのリンクを付けます
+(`adr-guard links --fix` で付けられます)。作業はブランチで行い、main へは
+`--no-ff` でマージします。
 
 クローンしたら、adr-guard を入れて git の hook を有効にしてください。
 Claude Code で編集する場合は、全体の設定(`~/.claude/settings.json`)に
@@ -258,7 +261,7 @@ adr-guard の hook を入れてください([adr-guard の README](https://githu
 の例のとおり。リポジトリには置いていません):
 
 ```sh
-cargo install --git https://github.com/tett23/adr-guard --tag v0.1.0
+cargo install --git https://github.com/tett23/adr-guard --tag v0.8.2
 git config core.hooksPath .githooks
 ```
 
