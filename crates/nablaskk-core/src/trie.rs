@@ -107,9 +107,12 @@ impl RomanKanaConverter {
             }
 
             // Escape spaces so they survive tokenization, then split on commas.
+            // Only ASCII whitespace separates, as AquaSKK's stream extraction
+            // does, so an ideographic space ("z ," -> U+3000) stays a field.
             let escaped = line.replace(' ', "&space;").replace(',', " ");
             let fields: Vec<String> = escaped
-                .split_whitespace()
+                .split(|c: char| c.is_ascii_whitespace())
+                .filter(|field| !field.is_empty())
                 .map(unescape)
                 .collect();
 
@@ -253,6 +256,30 @@ mod tests {
         assert!(!converted);
         assert_eq!(result.output, "ん");
         assert_eq!(result.next, "k");
+    }
+
+    /// ADR 0009: "z " gives the ideographic space (U+3000) in every kana mode.
+    #[test]
+    fn z_space_is_ideographic_space() {
+        let conv = converter();
+
+        for mode in [Hirakana, Katakana, Jisx0201Kana] {
+            let (result, converted) = conv.convert(mode, "z ");
+            assert!(converted, "{mode:?}");
+            assert_eq!(result.output, "\u{3000}", "{mode:?}");
+        }
+    }
+
+    /// ADR 0009: only ASCII whitespace separates fields, so an ideographic
+    /// space inside a field survives (as in AquaSKK's stream extraction).
+    #[test]
+    fn ideographic_space_stays_inside_fields() {
+        let mut conv = RomanKanaConverter::new();
+        conv.load("qq,あ\u{3000}い,ア\u{3000}イ,ｱ\u{3000}ｲ\n");
+
+        assert_eq!(conv.convert(Hirakana, "qq").0.output, "あ\u{3000}い");
+        assert_eq!(conv.convert(Katakana, "qq").0.output, "ア\u{3000}イ");
+        assert_eq!(conv.convert(Jisx0201Kana, "qq").0.output, "ｱ\u{3000}ｲ");
     }
 
     #[test]

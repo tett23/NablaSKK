@@ -710,6 +710,29 @@ mod keymap_patch_tests {
     }
 }
 
+/// ADR 0009: the shipped kana rules turn "z " into the ideographic space.
+#[cfg(test)]
+mod kana_rule_tests {
+    use super::*;
+
+    #[test]
+    fn z_space_commits_ideographic_space() {
+        unsafe {
+            let path = CString::new(std::env::temp_dir().join("nablaskk-ffi-z-space").to_str().unwrap()).unwrap();
+            let s = skk_session_new(path.as_ptr());
+            skk_session_set_input_mode(s, 0);
+
+            skk_session_handle(s, b'z', 0, 0);
+            skk_session_handle(s, b' ', 0, 0);
+            let fixed = skk_session_take_fixed(s);
+            assert_eq!(CStr::from_ptr(fixed).to_str().unwrap(), "\u{3000}");
+            skk_string_free(fixed);
+
+            skk_session_free(s);
+        }
+    }
+}
+
 /// ADR 0008: the header promises every function tolerates a NULL session
 /// and NULL strings, and that `skk_string_free(NULL)` does nothing.
 #[cfg(test)]
