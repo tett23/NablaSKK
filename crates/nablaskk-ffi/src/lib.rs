@@ -733,6 +733,51 @@ mod kana_rule_tests {
     }
 }
 
+/// ADR 0012: dictionary candidates written as (concat "...") are shown and
+/// committed as the string, and learned in the dictionary form.
+#[cfg(test)]
+mod concat_tests {
+    use super::*;
+
+    unsafe fn take(text: *mut c_char) -> String {
+        let value = CStr::from_ptr(text).to_str().unwrap().to_string();
+        skk_string_free(text);
+        value
+    }
+
+    #[test]
+    fn concat_candidate_is_shown_committed_and_learned() {
+        unsafe {
+            let dir = std::env::temp_dir().join(format!("nablaskk-ffi-concat-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let dictionary = dir.join("SKK-JISYO.test");
+            std::fs::write(&dictionary, ";; okuri-nasi entries.\nao /(concat \"and\\057or\")/\n").unwrap();
+            let user = dir.join("skk-jisyo");
+            let _ = std::fs::remove_file(&user);
+
+            let user_path = CString::new(user.to_str().unwrap()).unwrap();
+            let s = skk_session_new(user_path.as_ptr());
+            let location = CString::new(dictionary.to_str().unwrap()).unwrap();
+            assert_eq!(skk_session_add_dictionary(s, 0, location.as_ptr()), 0);
+            skk_session_set_input_mode(s, 0);
+
+            for key in *b"/ao " {
+                skk_session_handle(s, key, 0, 0);
+            }
+            assert_eq!(take(skk_session_composing(s)), "▼and/or");
+
+            skk_session_handle(s, 0x0d, 36, 0);
+            assert_eq!(take(skk_session_take_fixed(s)), "and/or");
+
+            skk_session_save(s);
+            let learned = std::fs::read_to_string(&user).unwrap();
+            assert!(learned.contains("ao /(concat \"and\\057or\")/"), "{learned}");
+
+            skk_session_free(s);
+        }
+    }
+}
+
 /// ADR 0008: the header promises every function tolerates a NULL session
 /// and NULL strings, and that `skk_string_free(NULL)` does nothing.
 #[cfg(test)]

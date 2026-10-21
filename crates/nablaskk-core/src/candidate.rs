@@ -26,15 +26,16 @@ pub struct Candidate {
 }
 
 impl Candidate {
-    /// Parse "word;annotation" form.
+    /// Parse "word;annotation" form. A word written as `(concat "...")` is
+    /// shown as the string it evaluates to; `word()` keeps the dictionary
+    /// form (ADR 0012).
     pub fn new(candidate: &str) -> Self {
-        match candidate.split_once(';') {
-            Some((word, annotation)) => Self {
-                word: word.to_string(),
-                annotation: annotation.to_string(),
-                ..Self::default()
-            },
-            None => Self { word: candidate.to_string(), ..Self::default() },
+        let (word, annotation) = candidate.split_once(';').unwrap_or((candidate, ""));
+        Self {
+            word: word.to_string(),
+            annotation: annotation.to_string(),
+            variant: eval_concat(word).unwrap_or_default(),
+            ..Self::default()
         }
     }
 
@@ -91,6 +92,74 @@ impl Candidate {
     pub fn decode_word(&mut self) {
         self.word = Self::decode(&self.word);
     }
+}
+
+/// Evaluates `(concat "..." ...)` whose arguments are only Emacs Lisp
+/// string literals, as SKK dictionaries write candidates containing `/` or
+/// `;` (e.g. `(concat "and\057or")`). Anything else is None.
+fn eval_concat(src: &str) -> Option<String> {
+    let mut rest = src.strip_prefix("(concat ")?;
+    let mut out = String::new();
+    let mut has_string = false;
+    loop {
+        rest = rest.trim_start_matches(' ');
+        match rest.chars().next()? {
+            '"' => {
+                let (text, after) = read_string(&rest[1..])?;
+                out.push_str(&text);
+                rest = after;
+                has_string = true;
+            }
+            // The closing parenthesis must end the candidate
+            ')' if has_string && rest.len() == 1 => return Some(out),
+            _ => return None,
+        }
+    }
+}
+
+/// Reads an Emacs Lisp string literal after its opening quote; returns the
+/// text and what follows the closing quote. Supports octal escapes (`\057`),
+/// `\n`, `\t`, `\uXXXX` and `\UXXXXXXXX`; any other escaped character stands
+/// for itself (`\\`, `\"`). Raw bytes (octal >= 0x80) are not supported.
+fn read_string(src: &str) -> Option<(String, &str)> {
+    let mut out = String::new();
+    let mut chars = src.char_indices().peekable();
+    while let Some((index, ch)) = chars.next() {
+        match ch {
+            '"' => return Some((out, &src[index + 1..])),
+            '\\' => match chars.next()?.1 {
+                digit @ '0'..='7' => {
+                    let mut value = digit.to_digit(8)?;
+                    for _ in 0..2 {
+                        match chars.peek().and_then(|&(_, c)| c.to_digit(8)) {
+                            Some(next) => {
+                                value = value * 8 + next;
+                                chars.next();
+                            }
+                            None => break,
+                        }
+                    }
+                    if value >= 0x80 {
+                        return None;
+                    }
+                    out.push(char::from_u32(value)?);
+                }
+                'n' => out.push('\n'),
+                't' => out.push('\t'),
+                escape @ ('u' | 'U') => {
+                    let digits = if escape == 'u' { 4 } else { 8 };
+                    let hex: String = (0..digits).map(|_| chars.next().map(|(_, c)| c)).collect::<Option<_>>()?;
+                    if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+                        return None;
+                    }
+                    out.push(char::from_u32(u32::from_str_radix(&hex, 16).ok()?)?);
+                }
+                other => out.push(other),
+            },
+            other => out.push(other),
+        }
+    }
+    None
 }
 
 // Serializes back to the "word;annotation" dictionary form.
@@ -362,6 +431,57 @@ mod tests {
 
         let c = Candidate::from_word("候補;注釈");
         assert_eq!(c.word(), "候補;注釈");
+    }
+
+    /// ADR 0012: (concat "...") is shown as the string it evaluates to,
+    /// while the dictionary form is kept.
+    #[test]
+    fn concat_candidates() {
+        let c = Candidate::new(r#"(concat "and\057or")"#);
+        assert_eq!(c.variant(), "and/or");
+        assert_eq!(c.word(), r#"(concat "and\057or")"#);
+        assert_eq!(c.to_string(), r#"(concat "and\057or")"#);
+
+        let c = Candidate::new(r#"(concat "I\057O");入出力"#);
+        assert_eq!((c.variant(), c.annotation()), ("I/O", "入出力"));
+
+        let variant = |src: &str| Candidate::new(src).variant().to_string();
+        assert_eq!(variant(r#"(concat "^^\073")"#), "^^;");
+        assert_eq!(variant(r#"(concat "(^^)")"#), "(^^)");
+        assert_eq!(variant(r#"(concat "\\_\"")"#), r#"\_""#);
+        assert_eq!(variant(r#"(concat "改\n行")"#), "改\n行");
+        assert_eq!(variant(r#"(concat "a\tb")"#), "a\tb");
+        assert_eq!(variant(r#"(concat "a" "b")"#), "ab");
+        assert_eq!(variant(r#"(concat "\u2022\U0001F600")"#), "\u{2022}\u{1F600}");
+        assert_eq!(variant(r#"(concat "\57")"#), "/");
+        assert_eq!(variant(r#"(concat "\0571")"#), "/1");
+
+        // Not a plain concat of string literals: shown as written
+        for src in [
+            "(^^)",
+            r#"(concatenate "a")"#,
+            r#"(concat "a" b)"#,
+            r#"(concat "abc)"#,
+            r#"(concat "a") "#,
+            "(concat )",
+            r#"(concat "\200")"#,
+            r#"(concat "\ud800")"#,
+            r#"(concat "\U00110000")"#,
+            r#"(concat "\u12")"#,
+        ] {
+            assert_eq!(variant(src), src, "{src}");
+        }
+
+        // The same text written in two forms is one candidate
+        assert_eq!(Candidate::new(r#"(concat "(^^)")"#), Candidate::new("(^^)"));
+
+        // Numeric conversion still overrides the variant
+        let mut c = Candidate::new(r##"(concat "#0\057")"##);
+        c.set_variant("1/");
+        assert_eq!(c.variant(), "1/");
+
+        // A word typed in registration is not evaluated
+        assert_eq!(Candidate::from_word(r#"(concat "a")"#).variant(), r#"(concat "a")"#);
     }
 
     #[test]

@@ -310,6 +310,10 @@ sh macos/check-bundle.sh     # ビルドした .app の中身(規則ファイル
 - 文字コード変換は encoding ライブラリを使わず、本家の
   EUC-JISX0213 ⇔ Unicode 対応表から生成したテーブル
   (`src/jconv/eucjp_tables.rs`)で実装しています。
+- 辞書の `(concat "and\057or")` のような候補を、本家のように式のまま表示せず、
+  連結した文字列(`and/or`)として表示・確定します。辞書とユーザー辞書には式の形の
+  まま残すので、ほかの SKK と辞書を共有できます
+  ([ADR 0012](docs/adr/0012-evaluate-concat-candidates.md))。
 - 辞書の非同期ロード(pthread タイマー)は同期ロード + `reload_if_updated()`
   に置き換えました。
 - `SKKBackEnd` / `SKKRomanKanaConverter` のシングルトンは廃止し、
