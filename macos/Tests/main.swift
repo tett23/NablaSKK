@@ -91,6 +91,36 @@ check(!ClientQuirks.shouldMask(.controlKeys, handled: true, produced: false, was
 check(!ClientQuirks.shouldMask(.none, handled: true, produced: false, wasComposing: false, hasControl: true),
       "native clients are never masked")
 
+// ADR 0010: VSCode hands the page the key itself unless marked text exists
+for id in ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium"] {
+    check(ClientQuirks.keyLeak(for: id) == .keyEvents, "vscode: \(id) gets the VSCode handling")
+}
+for id in ["com.anthropic.claudefordesktop", "com.google.Chrome", "md.obsidian", "com.mitchellh.ghostty"] {
+    check(ClientQuirks.keyLeak(for: id) != .keyEvents, "vscode: \(id) keeps its handling")
+}
+func masking(_ leak: ClientQuirks.KeyLeak, handled: Bool = true, committed: Bool = false,
+             markedBefore: Bool = false, markedAfter: Bool = false, hasControl: Bool = false) -> ClientQuirks.Masking {
+    ClientQuirks.masking(leak, handled: handled, committed: committed,
+                         markedBefore: markedBefore, markedAfter: markedAfter, hasControl: hasControl)
+}
+check(masking(.keyEvents, committed: true) == .markThenCommit,
+      "vscode: a direct commit (a -> あ) is marked first, then committed")
+check(masking(.keyEvents) == .zeroWidthSpaceReplaced && masking(.keyEvents, hasControl: true) == .zeroWidthSpaceReplaced,
+      "vscode: a silent key (l, Ctrl-J) is hidden and ended by replacing the mark")
+check(masking(.keyEvents, committed: true, markedBefore: true) == .none
+      && masking(.keyEvents, markedAfter: true) == .none
+      && masking(.keyEvents, committed: true, markedAfter: true) == .none,
+      "vscode: marked text before or after the key already hides it")
+check(masking(.keyEvents, handled: false) == .none, "vscode: pass-through keys (ASCII a) are not masked")
+// The existing handling is unchanged
+check(masking(.allKeys) == .zeroWidthSpace && masking(.allKeys, committed: true) == .none
+      && masking(.allKeys, markedBefore: true) == .none,
+      "ghostty: unchanged under masking()")
+check(masking(.controlKeys, hasControl: true) == .zeroWidthSpace && masking(.controlKeys) == .none
+      && masking(.controlKeys, committed: true, hasControl: true) == .none,
+      "chromium: unchanged under masking()")
+check(masking(.none, hasControl: true) == .none, "native: unchanged under masking()")
+
 // The engine side of the Ghostty case: `l` is consumed and produces nothing
 do {
     let session = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-key-test")
