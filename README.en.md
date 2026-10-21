@@ -64,6 +64,8 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
    dragging them into the window, turn them on and off with the checkboxes, and change the
    search order by dragging or with the arrow buttons. Changes are saved immediately and take
    effect the next time you start typing in any app.
+   The bottom of the preferences app's sidebar shows the version and the commit it was
+   built from (`NablaSKK 1.2.0 (8128940)`). Please include it when you report a problem.
 
    The settings are stored in `~/Library/Application Support/NablaSKK/dictionaries.conf`, which
    you may also edit by hand (it is created on first launch; an existing AquaSKK SKK-JISYO.L is
