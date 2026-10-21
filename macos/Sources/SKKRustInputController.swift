@@ -189,6 +189,7 @@ public class SKKRustInputController: IMKInputController {
         guard let client = client() else { return }
 
         // Commit pending text so nothing is lost on focus change
+        flushPendingCommit(to: client)
         Engine.session.commit()
         let fixed = Engine.session.takeFixed()
         if !fixed.isEmpty {
@@ -207,6 +208,7 @@ public class SKKRustInputController: IMKInputController {
     public override func commitComposition(_ sender: Any!) {
         guard let client = client() else { return }
 
+        flushPendingCommit(to: client)
         Engine.session.commit()
         let fixed = Engine.session.takeFixed()
         if !fixed.isEmpty {
@@ -233,6 +235,9 @@ public class SKKRustInputController: IMKInputController {
             return false
         }
 
+        // A commit held back by the previous key comes first (ADR 0010)
+        let hadPending = flushPendingCommit(to: client)
+
         let key = KeyTranslator.translate(event)
         let (charcode, keycode, mods) = (key.charcode, key.keycode, key.mods)
 
@@ -254,7 +259,15 @@ public class SKKRustInputController: IMKInputController {
         let handled = Engine.session.handle(charcode: charcode, keycode: keycode, mods: mods)
         recordInputMode()
 
-        let produced = sync(to: client)
+        // Some clients act on a key the input method handled unless marked
+        // text exists before or after the handler (ClientQuirks).
+        let fixed = Engine.session.takeFixed()
+        let masking = ClientQuirks.masking(
+            ClientQuirks.keyLeak(for: client.bundleIdentifier()), handled: handled,
+            committed: !fixed.isEmpty, markedBefore: wasComposing || hadPending,
+            markedAfter: !Engine.session.composing.isEmpty, hasControl: mods.contains(.ctrl))
+
+        let produced = sync(to: client, fixed: masking == .markThenCommit ? "" : fixed) || !fixed.isEmpty
 
         DebugLog.write {
             // Metadata only: plain printable keys are not recorded
@@ -267,18 +280,39 @@ public class SKKRustInputController: IMKInputController {
                 + "mods=\(mods.rawValue) flags=\(String(event.modifierFlags.rawValue, radix: 16)) "
                 + (printable ? "" : "characters=[\(raw)] ignoringModifiers=[\(rawIgnoring)] ")
                 + "handled=\(handled) produced=\(produced) wasComposing=\(wasComposing) "
-                + "mode=\(Engine.session.inputMode)"
+                + "mode=\(Engine.session.inputMode) masking=\(masking)"
         }
 
-        // A key we consumed without touching any text (`l` switching to ASCII,
-        // Ctrl-J switching back) is still acted on by some clients.
-        let leak = ClientQuirks.keyLeak(for: client.bundleIdentifier())
-        if ClientQuirks.shouldMask(leak, handled: handled, produced: produced,
-                                   wasComposing: wasComposing, hasControl: mods.contains(.ctrl)) {
-            maskKeyEvent(for: client)
+        switch masking {
+        case .none: break
+        case .zeroWidthSpace: maskKeyEvent(for: client, replacing: false)
+        case .zeroWidthSpaceReplaced: maskKeyEvent(for: client, replacing: true)
+        case .markThenCommit: holdCommit(fixed, for: client)
         }
 
         return handled
+    }
+
+    /// Text shown as marked text by `holdCommit`, committed once the key
+    /// handler has returned or before the next key, whichever comes first.
+    private var pendingCommit: String?
+
+    /// Show committed text as marked text and commit it after the handler
+    /// has returned, so the client sees marked text after the key (ADR 0010).
+    private func holdCommit(_ text: String, for client: IMKTextInput) {
+        setMarkedText(text, to: client)
+        pendingCommit = text
+        DispatchQueue.main.async { [weak self] in
+            self?.flushPendingCommit(to: client)
+        }
+    }
+
+    @discardableResult
+    private func flushPendingCommit(to client: IMKTextInput) -> Bool {
+        guard let text = pendingCommit else { return false }
+        pendingCommit = nil
+        insert(text, to: client)
+        return true
     }
 
     /// Clients with a key leak (see `ClientQuirks`) only leave a consumed key
@@ -286,15 +320,24 @@ public class SKKRustInputController: IMKInputController {
     /// AquaSKK's trick of marking 0x0c and clearing it inside the handler
     /// leaves no marked text at the end and does not help. Instead hold a
     /// zero-width space as marked text until the handler has returned, then
-    /// cancel the composition.
-    private func maskKeyEvent(for client: IMKTextInput) {
+    /// cancel the composition: clear the marked text, or (`replacing`)
+    /// replace it with empty text so editors end the composition with
+    /// nothing left behind (ADR 0010).
+    private func maskKeyEvent(for client: IMKTextInput, replacing: Bool) {
         let none = NSRange(location: NSNotFound, length: NSNotFound)
-        client.setMarkedText("\u{200B}", selectionRange: NSRange(location: 0, length: 0), replacementRange: none)
+        // VSCode: the caret goes after the mark, so Monaco reports a plain
+        // insertion VSCodeVim can follow (VSCodeVim#10111)
+        let caret = NSRange(location: replacing ? 1 : 0, length: 0)
+        client.setMarkedText("\u{200B}", selectionRange: caret, replacementRange: none)
 
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
             // A key typed in between already replaced the marked text
-            guard Engine.session.composing.isEmpty else { return }
-            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0), replacementRange: none)
+            guard Engine.session.composing.isEmpty, self?.pendingCommit == nil else { return }
+            if replacing {
+                client.insertText("", replacementRange: none)
+            } else {
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0), replacementRange: none)
+            }
         }
     }
 
@@ -305,8 +348,7 @@ public class SKKRustInputController: IMKInputController {
     /// Push engine output to the client. Returns true when it committed
     /// text or left marked text behind.
     @discardableResult
-    private func sync(to client: IMKTextInput) -> Bool {
-        let fixed = Engine.session.takeFixed()
+    private func sync(to client: IMKTextInput, fixed: String) -> Bool {
         if !fixed.isEmpty {
             insert(fixed, to: client)
         }
