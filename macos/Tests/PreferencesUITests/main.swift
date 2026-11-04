@@ -111,9 +111,10 @@ func drainMouseEvents() -> Int {
 
 /// A click at a point in window coordinates (origin bottom-left).
 /// The mouse-up is queued before the mouse-down is sent, so a tracking
-/// loop run inside mouseDown (text fields) takes it at once; otherwise it
-/// is taken from the queue and sent after. No timer and no deadline, so a
-/// slow machine cannot leave it for the next click (ADR 0016).
+/// loop run inside mouseDown (text fields) takes it at once; otherwise the
+/// run loop turns for 0.1 s, as between a real press and release, and it
+/// is taken from the queue and sent. No deadline, so a slow machine cannot
+/// leave it for the next click (ADR 0016, ADR 0017).
 func click(at point: NSPoint) {
     func event(_ type: NSEvent.EventType) -> NSEvent {
         NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
@@ -122,10 +123,15 @@ func click(at point: NSPoint) {
     }
     let strayBefore = drainMouseEvents()
     if strayBefore > 0 { check(false, "click: stray mouse event before the click (\(strayBefore))") }
+    let down = event(.leftMouseDown)  // made first, so the mouse-up's timestamp is later
     NSApp.postEvent(event(.leftMouseUp), atStart: false)
-    window.sendEvent(event(.leftMouseDown))
-    if let up = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true) {
-        window.sendEvent(up)
+    window.sendEvent(down)
+    if NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true) != nil {
+        // No tracking loop took it. The mouse-up is sent after the run-loop
+        // turn, made again so its timestamp is not older than that turn: a
+        // stale one (main thread stalled before it) did not release the button.
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        window.sendEvent(event(.leftMouseUp))
     }
     let strayAfter = drainMouseEvents()
     if strayAfter > 0 { check(false, "click: stray mouse event after the click (\(strayAfter))") }
@@ -223,7 +229,7 @@ let orders: [[SettingsPane]] = [
 for order in orders {
     for pane in order {
         showPane(pane)
-        check(currentPane() == pane.rawValue, "click \(pane.title): the page switches")
+        check(currentPane() == pane.rawValue, "click \(pane.title): the page switches (pane=\(currentPane() ?? "nil"))")
         let rows = highlightedRows()
         check(rows == [SettingsPane.allCases.firstIndex(of: pane)!], "click \(pane.title): only its row is highlighted (got \(rows))")
     }
