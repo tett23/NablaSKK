@@ -86,23 +86,50 @@ func settle(_ seconds: Double = 0.4) {
     RunLoop.main.run(until: Date().addingTimeInterval(seconds))
 }
 
-/// A click at a point in window coordinates (origin bottom-left). The
-/// mouse-up comes from a timer so it also reaches tracking loops run
-/// inside mouseDown (text fields, buttons).
+/// Waits until `condition` holds, running the run loop in short steps;
+/// gives up after `timeout` seconds (ADR 0016). Returns the last result.
+@discardableResult
+func waitUntil(timeout: Double = 5, _ condition: () -> Bool) -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    while true {
+        host.layoutSubtreeIfNeeded()
+        if condition() { return true }
+        if Date() >= deadline { return false }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+    }
+}
+
+/// Removes mouse events left in the queue; their count.
+func drainMouseEvents() -> Int {
+    var count = 0
+    while NSApp.nextEvent(matching: [.leftMouseDown, .leftMouseUp, .leftMouseDragged], until: .distantPast,
+                          inMode: .default, dequeue: true) != nil {
+        count += 1
+    }
+    return count
+}
+
+/// A click at a point in window coordinates (origin bottom-left).
+/// The mouse-up is queued before the mouse-down is sent, so a tracking
+/// loop run inside mouseDown (text fields) takes it at once; otherwise it
+/// is taken from the queue and sent after. No timer and no deadline, so a
+/// slow machine cannot leave it for the next click (ADR 0016).
 func click(at point: NSPoint) {
     func event(_ type: NSEvent.EventType) -> NSEvent {
         NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
                            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
                            context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
     }
-    let up = event(.leftMouseUp)
-    RunLoop.main.add(Timer(timeInterval: 0.1, repeats: false) { _ in NSApp.postEvent(up, atStart: false) }, forMode: .common)
+    let strayBefore = drainMouseEvents()
+    if strayBefore > 0 { check(false, "click: stray mouse event before the click (\(strayBefore))") }
+    NSApp.postEvent(event(.leftMouseUp), atStart: false)
     window.sendEvent(event(.leftMouseDown))
-    if let pending = NSApp.nextEvent(matching: .leftMouseUp, until: Date().addingTimeInterval(0.3),
-                                     inMode: .default, dequeue: true) {
-        window.sendEvent(pending)
+    if let up = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true) {
+        window.sendEvent(up)
     }
-    settle()
+    let strayAfter = drainMouseEvents()
+    if strayAfter > 0 { check(false, "click: stray mouse event after the click (\(strayAfter))") }
+    host.layoutSubtreeIfNeeded()
 }
 func click(xFromLeft x: CGFloat, yFromTop y: CGFloat) { click(at: NSPoint(x: x, y: size.height - y)) }
 
@@ -113,11 +140,33 @@ func field(_ value: String) -> NSTextField? {
     textFields(in: host).first { $0.stringValue == value && $0.isEditable }
 }
 func frameInWindow(_ view: NSView) -> NSRect { view.convert(view.bounds, to: nil) }
+/// Waits until fields with these values are shown and have stayed in
+/// place for a few polls: a field can appear before the layout pass that
+/// moves it into place (ADR 0016).
+func waitForFields(_ values: String...) {
+    var last: [NSRect] = [], steady = 0
+    waitUntil {
+        let frames = values.compactMap { field($0).map(frameInWindow) }
+        steady = frames.count == values.count && frames == last ? steady + 1 : 0
+        last = frames
+        return steady >= 3
+    }
+}
 func isEditing(_ field: NSTextField) -> Bool {
     (window.firstResponder as? NSTextView).map { $0.delegate === field } ?? false
 }
+/// Clicks a sidebar row and waits until its page is chosen and drawn
+/// highlighted (ADR 0016); the checks after it say whether it was.
 func showPane(_ pane: SettingsPane) {
-    click(xFromLeft: 70, yFromTop: rowCenterY(SettingsPane.allCases.firstIndex(of: pane)!))
+    let index = SettingsPane.allCases.firstIndex(of: pane)!
+    click(xFromLeft: 70, yFromTop: rowCenterY(index))
+    waitUntil { currentPane() == pane.rawValue && highlightedRows() == [index] }
+}
+func currentPane() -> String? { UserDefaults.standard.string(forKey: paneKey) }
+/// `check`, waiting for the condition first (ADR 0016).
+func checkEventually(_ condition: () -> Bool, _ name: @autoclosure () -> String) {
+    let ok = waitUntil(condition)
+    check(ok, name())
 }
 
 func snapshot() -> NSBitmapImageRep {
@@ -163,8 +212,7 @@ func highlightedRows() -> [Int] {
     }
 }
 
-settle()
-check(highlightedRows() == [0], "initially 辞書 is highlighted")
+checkEventually({ highlightedRows() == [0] }, "initially 辞書 is highlighted")
 
 let orders: [[SettingsPane]] = [
     [.input, .skkserv, .dictionaries],
@@ -175,7 +223,7 @@ let orders: [[SettingsPane]] = [
 for order in orders {
     for pane in order {
         showPane(pane)
-        check(UserDefaults.standard.string(forKey: paneKey) == pane.rawValue, "click \(pane.title): the page switches")
+        check(currentPane() == pane.rawValue, "click \(pane.title): the page switches")
         let rows = highlightedRows()
         check(rows == [SettingsPane.allCases.firstIndex(of: pane)!], "click \(pane.title): only its row is highlighted (got \(rows))")
     }
@@ -195,13 +243,12 @@ func press(keyCode: UInt16, character: Int) {
 }
 func pressDown() { press(keyCode: 125, character: NSDownArrowFunctionKey) }
 func pressUp() { press(keyCode: 126, character: NSUpArrowFunctionKey) }
-func currentPane() -> String? { UserDefaults.standard.string(forKey: paneKey) }
 
 showPane(.input)
 pressDown()
-check(currentPane() == SettingsPane.kanaRules.rawValue && highlightedRows() == [4], "sidebar: ↓ moves to the next page")
+checkEventually({ currentPane() == SettingsPane.kanaRules.rawValue && highlightedRows() == [4] }, "sidebar: ↓ moves to the next page")
 pressUp()
-check(currentPane() == SettingsPane.input.rawValue && highlightedRows() == [3], "sidebar: ↑ moves to the previous page")
+checkEventually({ currentPane() == SettingsPane.input.rawValue && highlightedRows() == [3] }, "sidebar: ↑ moves to the previous page")
 showPane(.keys)
 pressDown()
 check(currentPane() == SettingsPane.keys.rawValue, "sidebar: ↓ on the last page stays")
@@ -212,19 +259,20 @@ check(currentPane() == SettingsPane.dictionaries.rawValue, "sidebar: ↑ on the 
 // MARK: - Dictionary page (ADR 0006)
 
 showPane(.dictionaries)
+waitForFields(presentDictionary, missingDictionary, disabledDictionary)
 if let present = field(presentDictionary), let missing = field(missingDictionary) {
     click(at: NSPoint(x: frameInWindow(present).midX, y: frameInWindow(present).midY))
-    check(isEditing(present), "dictionaries: one click puts the cursor in the location field")
-    check(bandBelow(missing, contains: PreferencesPalette.error), "dictionaries: a missing file is explained in error text under its field")
+    checkEventually({ isEditing(present) }, "dictionaries: one click puts the cursor in the location field")
+    checkEventually({ bandBelow(missing, contains: PreferencesPalette.error) }, "dictionaries: a missing file is explained in error text under its field")
     check(!bandBelow(present, contains: PreferencesPalette.error), "dictionaries: no error text under an existing file")
 
     // Clicking the row (its name column) selects it
     let frame = frameInWindow(missing)
     let nameColumn = NSPoint(x: frame.minX - 12 - DictionaryRow.kindWidth - 12 - 8, y: frame.midY)
     click(at: nameColumn)
-    let pixel = color(in: snapshot(), at: nameColumn)
     let selected = resolved(composite(PreferencesPalette.selectedRow, over: .textBackgroundColor))
-    check(pixel.map { distance($0, selected) < 0.12 } == true, "dictionaries: clicking a row selects it")
+    checkEventually({ color(in: snapshot(), at: nameColumn).map { distance($0, selected) < 0.12 } == true },
+                    "dictionaries: clicking a row selects it")
 } else {
     check(false, "dictionaries: location fields are shown")
 }
@@ -250,14 +298,15 @@ if let off = field(disabledDictionary) {
 // MARK: - Key page (ADR 0006)
 
 showPane(.keys)
+waitForFields("bad spec", "ctrl::g")
 if let bad = field("bad spec") {
-    check(bandBelow(bad, contains: PreferencesPalette.error), "keys: an invalid key spec is explained in error text under its field")
+    checkEventually({ bandBelow(bad, contains: PreferencesPalette.error) }, "keys: an invalid key spec is explained in error text under its field")
 } else {
     check(false, "keys: the invalid override is shown")
 }
 // An overridden key shows its default under the field (ADR 0007)
 if let overridden = field("ctrl::g") {
-    check(bandBelow(overridden, contains: PreferencesPalette.secondary), "keys: an overridden key shows the default under its field")
+    checkEventually({ bandBelow(overridden, contains: PreferencesPalette.secondary) }, "keys: an overridden key shows the default under its field")
 } else {
     check(false, "keys: the valid override is shown")
 }
@@ -265,13 +314,16 @@ if let overridden = field("ctrl::g") {
 // MARK: - Romaji rule page (ADR 0006)
 
 showPane(.kanaRules)
+waitForFields("jb")
 if let input = field("jb") {
     click(at: NSPoint(x: frameInWindow(input).midX, y: frameInWindow(input).midY))
-    check(isEditing(input), "romaji rules: one click puts the cursor in the input field")
+    checkEventually({ isEditing(input) }, "romaji rules: one click puts the cursor in the input field")
 } else {
     check(false, "romaji rules: the user rule is shown")
 }
-// The built-in table sits next to the test binary (run-ui-tests.sh copies it)
+// The built-in table sits next to the test binary (run-ui-tests.sh copies it);
+// a check that nothing is there, so a fixed wait (ADR 0016)
+settle()
 check(textFields(in: host).filter { !$0.isEnabled && $0.stringValue == "z." }.isEmpty,
       "romaji rules: built-in rules are text, not disabled fields")
 
@@ -281,15 +333,16 @@ showPane(.userDictionary)
 func tables(in view: NSView) -> [NSTableView] {
     (view as? NSTableView).map { [$0] } ?? view.subviews.flatMap(tables(in:))
 }
+waitUntil { tables(in: host).first.map { $0.numberOfRows > 0 } == true }
 if let entries = tables(in: host).first, entries.numberOfRows > 0 {
     // The entry list is still a List (no fields in it); synthesized clicks
     // do not reach its table, so select through the table itself. What is
     // tested is the click on the candidate field below.
     entries.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
-    settle()
+    waitForFields("試験")
     if let candidate = field("試験") {
         click(at: NSPoint(x: frameInWindow(candidate).midX, y: frameInWindow(candidate).midY))
-        check(isEditing(candidate), "user dictionary: one click puts the cursor in a candidate field")
+        checkEventually({ isEditing(candidate) }, "user dictionary: one click puts the cursor in a candidate field")
     } else {
         check(false, "user dictionary: the candidate is shown after selecting the entry")
     }
