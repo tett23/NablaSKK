@@ -12,7 +12,22 @@
 
 use crate::jconv;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Follow `path` through any chain of symbolic links to the file it
+/// names, so a save replaces that file instead of the link (ADR 0017).
+/// Relative links resolve against the link's directory. A dangling link
+/// resolves to its missing target, which the save then creates; a path
+/// that is not a link is returned as is.
+pub fn resolve_symlinks(path: &Path) -> PathBuf {
+    // Bounded like the kernel's own limit, so a link loop cannot hang.
+    (0..40)
+        .try_fold(path.to_path_buf(), |current, _| match std::fs::read_link(&current) {
+            Ok(target) => Ok(current.parent().map_or(target.clone(), |dir| dir.join(&target))),
+            Err(_) => Err(current),
+        })
+        .unwrap_or_else(|resolved| resolved)
+}
 
 /// Reading and raw (unparsed) candidate line.
 pub type DictionaryEntry = (String, String);
@@ -294,5 +309,32 @@ mod tests {
         assert_eq!(reloaded.okuri_nasi(), file.okuri_nasi());
 
         std::fs::remove_file(&path).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn resolve_symlinks_follows_links_and_stops_on_loops() {
+        let dir = std::env::temp_dir().join("nablaskk-core-test").join("resolve-symlinks");
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+
+        let plain = dir.join("plain");
+        std::fs::write(&plain, "").unwrap();
+        assert_eq!(resolve_symlinks(&plain), plain);
+        assert_eq!(resolve_symlinks(&dir.join("missing")), dir.join("missing"));
+
+        std::os::unix::fs::symlink("real/file", dir.join("relative")).unwrap();
+        assert_eq!(resolve_symlinks(&dir.join("relative")), dir.join("real/file"));
+
+        let absolute = dir.join("real/absolute-target");
+        std::os::unix::fs::symlink(&absolute, dir.join("absolute")).unwrap();
+        assert_eq!(resolve_symlinks(&dir.join("absolute")), absolute);
+
+        std::os::unix::fs::symlink("loop-b", dir.join("loop-a")).unwrap();
+        std::os::unix::fs::symlink("loop-a", dir.join("loop-b")).unwrap();
+        let resolved = resolve_symlinks(&dir.join("loop-a"));
+        assert!(resolved == dir.join("loop-a") || resolved == dir.join("loop-b"));
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

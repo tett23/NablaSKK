@@ -114,6 +114,13 @@ headwords, and add, reorder and annotate candidates. Edits are saved automatical
 input method reloads the file the next time you start typing in any app (if the input method
 has unsaved learning of its own, that takes priority).
 
+The settings files and the user dictionary in `~/Library/Application Support/NablaSKK/` can be
+symbolic links, for example placed by home-manager from your dotfiles. The preferences app and
+the input method save to the file a link points at and leave the link in place, and edits made
+to that file by hand are picked up the next time you start typing. If the file a link points
+at cannot be written (inside the Nix store, for example), saving in the preferences app fails
+with an error.
+
 To uninstall, remove NablaSKK from the input sources, then:
 
 ```sh

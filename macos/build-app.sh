@@ -16,6 +16,7 @@ cd "$(dirname "$0")/.."
 APP=macos/dist/NablaSKK.app
 CONTENTS="$APP/Contents"
 SWIFT_SOURCES="swift/SKKSession.swift \
+    macos/Shared/ConfigFile.swift \
     macos/Shared/DictionaryConfig.swift \
     macos/Shared/UserDictionaryModel.swift \
     macos/Shared/InputSettings.swift \
@@ -29,7 +30,8 @@ SWIFT_SOURCES="swift/SKKSession.swift \
     macos/Sources/AnnotationWindow.swift \
     macos/Sources/SKKRustInputController.swift \
     macos/Sources/main.swift"
-PREFS_SOURCES="macos/Shared/DictionaryConfig.swift \
+PREFS_SOURCES="macos/Shared/ConfigFile.swift \
+    macos/Shared/DictionaryConfig.swift \
     macos/Shared/UserDictionaryModel.swift \
     macos/Shared/InputSettings.swift \
     macos/Shared/KeymapConfig.swift \
