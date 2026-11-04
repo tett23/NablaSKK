@@ -1,6 +1,6 @@
 # ADR 0016: 設定アプリの UI テストのクリックを、時間に頼らずに届ける
 
-ステータス: 採択
+ステータス: 採択→mouse-down と mouse-up のあいだ(click の手順)は [ADR 0017](0017-run-loop-turn-between-mouse-down-and-up.md)
 
 ## 文脈
 
