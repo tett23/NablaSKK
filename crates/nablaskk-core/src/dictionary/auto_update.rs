@@ -140,7 +140,7 @@ impl AutoUpdateDictionary {
         reader.read_exact(&mut body)?;
 
         // Replace the file a symlinked path points at, keeping the link
-        // (ADR 0017).
+        // (ADR 0021).
         let target = resolve_symlinks(&self.path);
         let tmp_path = target.with_extension("download");
         std::fs::write(&tmp_path, &body)?;
@@ -259,7 +259,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
     }
 
-    // ADR 0017: the downloaded copy replaces the file a symlink points at.
+    // ADR 0021: the downloaded copy replaces the file a symlink points at.
     #[cfg(unix)]
     #[test]
     fn download_writes_through_symlink() {

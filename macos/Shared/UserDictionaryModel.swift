@@ -198,7 +198,7 @@ struct UserDictionary: Equatable {
     }
 
     /// Write atomically, preserving the file's encoding. A symlinked file
-    /// stays a link (ADR 0017).
+    /// stays a link (ADR 0021).
     func save(to url: URL = fileURL) throws {
         let encoding: String.Encoding = isEUC ? .japaneseEUC : .utf8
         guard let data = serialize().data(using: encoding) else {

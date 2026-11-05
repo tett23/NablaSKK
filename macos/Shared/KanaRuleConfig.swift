@@ -162,7 +162,7 @@ struct KanaRuleSettings: Equatable {
         return parse(text)
     }
 
-    /// Keeps a symlinked file a link (ADR 0017).
+    /// Keeps a symlinked file a link (ADR 0021).
     func save(to url: URL = Self.fileURL) throws {
         try ConfigFile.write(serialize(), to: url)
     }

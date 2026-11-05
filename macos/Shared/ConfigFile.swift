@@ -1,5 +1,5 @@
 // NablaSKK: writing and watching files in the support directory that may
-// be symbolic links (ADR 0017), shared by the input method and the
+// be symbolic links (ADR 0021), shared by the input method and the
 // preferences app.
 //
 // Written by tett23, 2026.

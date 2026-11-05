@@ -15,7 +15,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 /// Follow `path` through any chain of symbolic links to the file it
-/// names, so a save replaces that file instead of the link (ADR 0017).
+/// names, so a save replaces that file instead of the link (ADR 0021).
 /// Relative links resolve against the link's directory. A dangling link
 /// resolves to its missing target, which the save then creates; a path
 /// that is not a link is returned as is.

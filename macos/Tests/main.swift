@@ -738,7 +738,7 @@ check(AppVersion.accessibilityLabel(["CFBundleShortVersionString": "1.2.0", "Nab
       && AppVersion.accessibilityLabel(["CFBundleShortVersionString": "1.2.0"]) == "バージョン 1.2.0",
       "version: VoiceOver label")
 
-// ADR 0017: a symlinked config file stays a link; saves go to the file
+// ADR 0021: a symlinked config file stays a link; saves go to the file
 // it points at, and changes to that file are noticed.
 do {
     let fm = FileManager.default
