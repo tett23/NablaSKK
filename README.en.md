@@ -107,6 +107,8 @@ have been searched.
 
 Punctuation can be switched on the "入力" (Input) page: the comma (、 / ，) and the period
 (。 / ．) independently (saved in `settings.conf`; takes effect the next time you start typing).
+The `、` and `。` in the outputs of rules you add on the "ローマ字" (Romaji) page follow this
+setting too (with `fj` → `、`, the full-width setting types `，`).
 
 The user dictionary is saved in `~/Library/Application Support/NablaSKK/skk-jisyo` (UTF-8). On
 the "ユーザー辞書" (User Dictionary) page of the preferences app you can search, add and delete

@@ -44,8 +44,10 @@ enum EngineSetup {
         if !settings.kanaRulePatch.isEmpty {
             session.patchKanaRules(settings.kanaRulePatch)
         }
-        if !userRules.patchText.isEmpty {
-            session.patchKanaRules(userRules.patchText)
+        // The user's 、 and 。 follow the punctuation settings (ADR 0019)
+        let userPatch = userRules.patchText(fullWidthComma: settings.fullWidthComma, fullWidthPeriod: settings.fullWidthPeriod)
+        if !userPatch.isEmpty {
+            session.patchKanaRules(userPatch)
         }
     }
 
