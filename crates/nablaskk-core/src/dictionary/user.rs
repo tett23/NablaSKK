@@ -185,7 +185,7 @@ impl LocalUserDictionary {
         self.last_save = Instant::now();
 
         // Replace the file a symlinked path points at, keeping the link
-        // (ADR 0017).
+        // (ADR 0021).
         let target = resolve_symlinks(&self.path);
         let tmp_path = target.with_extension("tmp");
 
@@ -455,7 +455,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
     }
 
-    // ADR 0017: a symlinked user dictionary stays a link; saves go to
+    // ADR 0021: a symlinked user dictionary stays a link; saves go to
     // the file it points at.
     #[cfg(unix)]
     fn symlink_dir(name: &str) -> PathBuf {

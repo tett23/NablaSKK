@@ -160,7 +160,7 @@ enum DictionaryConfig {
         return entries
     }
 
-    /// Keeps a symlinked file a link (ADR 0017).
+    /// Keeps a symlinked file a link (ADR 0021).
     static func save(_ entries: [DictionaryEntry], to url: URL = fileURL) throws {
         try ConfigFile.write(serialize(entries), to: url)
     }
