@@ -18,7 +18,7 @@
 //! checks on demand.
 
 use super::common::CommonDictionary;
-use super::file::Encoding;
+use super::file::{resolve_symlinks, Encoding};
 use super::{CompletionHelper, Dictionary};
 use crate::candidate::CandidateSuite;
 use crate::entry::Entry;
@@ -139,9 +139,12 @@ impl AutoUpdateDictionary {
         let mut body = vec![0u8; content_length];
         reader.read_exact(&mut body)?;
 
-        let tmp_path = self.path.with_extension("download");
+        // Replace the file a symlinked path points at, keeping the link
+        // (ADR 0017).
+        let target = resolve_symlinks(&self.path);
+        let tmp_path = target.with_extension("download");
         std::fs::write(&tmp_path, &body)?;
-        std::fs::rename(&tmp_path, &self.path)?;
+        std::fs::rename(&tmp_path, &target)?;
 
         Ok(true)
     }
@@ -254,5 +257,50 @@ mod tests {
         assert_eq!(suite.candidates()[0].word(), "漢字");
 
         std::fs::remove_file(&path).ok();
+    }
+
+    // ADR 0017: the downloaded copy replaces the file a symlink points at.
+    #[cfg(unix)]
+    #[test]
+    fn download_writes_through_symlink() {
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap().to_string();
+        let body = ";; okuri-ari entries.\n;; okuri-nasi entries.\nかんじ /漢字/\n".as_bytes().to_vec();
+
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = stream.read(&mut buf);
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(header.as_bytes()).unwrap();
+            stream.write_all(&body).unwrap();
+        });
+
+        let dir = std::env::temp_dir().join("nablaskk-core-test").join("auto-update-symlink");
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        let target = dir.join("real/SKK-JISYO.S");
+        std::fs::write(&target, ";; okuri-ari entries.\n;; okuri-nasi entries.\n").unwrap();
+        std::fs::File::options().write(true).open(&target).unwrap()
+            .set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(86_400)).unwrap();
+        let link = dir.join("SKK-JISYO.S");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        let location = format!("{address} /SKK-JISYO.S {}", link.display());
+        let dictionary = AutoUpdateDictionary::open(&location).unwrap();
+
+        let mut suite = CandidateSuite::new();
+        dictionary.find(&Entry::from_entry("かんじ"), &mut suite);
+        assert_eq!(suite.candidates()[0].word(), "漢字");
+        assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink(), "still a link");
+        assert!(std::fs::read_to_string(&target).unwrap().contains("かんじ /漢字/"));
+        assert!(!dir.join("real/SKK-JISYO.download").exists());
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

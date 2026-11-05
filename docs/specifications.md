@@ -100,6 +100,13 @@ AquaSKK の `SKK-JISYO.L` があればそれを使う。1 行に「タイプ 場
 すべて `~/Library/Application Support/NablaSKK/` にあり、IME は mtime を見て
 次にアクティブになったときに読み直す。
 
+設定ファイルとユーザー辞書(`skk-jisyo`)、自動更新辞書の置き場所はシンボリックリンクに
+してよい(home-manager などで dotfiles から置く使い方)。保存するときは、リンクを
+すべてたどった先のファイルを atomic に置き換え、リンクはそのまま残す。リンク先が
+書けないときは保存を失敗させ(設定アプリはページにエラーを出す)、リンクを通常の
+ファイルで置き換えない。変更の検知(mtime)もリンク先のファイルで行う
+([ADR 0017](adr/0017-keep-symlinked-config-files.md))。本家はリンクを置き換える。
+
 ### 5.1 settings.conf(`key=value`)
 
 | キー | 値 | 既定 | 内容 |

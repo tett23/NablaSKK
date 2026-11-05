@@ -146,12 +146,13 @@ struct KanaRuleSettings: Equatable {
         return parse(text)
     }
 
-    func save() throws {
-        try serialize().write(to: Self.fileURL, atomically: true, encoding: .utf8)
+    /// Keeps a symlinked file a link (ADR 0017).
+    func save(to url: URL = Self.fileURL) throws {
+        try ConfigFile.write(serialize(), to: url)
     }
 
     static var modificationDate: Date? {
-        (try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.modificationDate] as? Date
+        ConfigFile.modificationDate(of: fileURL)
     }
 
     /// Why each rule conflicts with the built-in table or with a rule

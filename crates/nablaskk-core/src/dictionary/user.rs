@@ -11,7 +11,7 @@
 //! User dictionary (port of `SKKLocalUserDictionary`).
 
 use super::common::{find_with, reverse_lookup_in};
-use super::file::{DictionaryEntry, DictionaryFile, Encoding};
+use super::file::{resolve_symlinks, DictionaryEntry, DictionaryFile, Encoding};
 use super::{CompletionHelper, Dictionary};
 use crate::candidate::{Candidate, CandidateSuite, OkuriHint};
 use crate::entry::Entry;
@@ -184,14 +184,17 @@ impl LocalUserDictionary {
         self.idle_count = 0;
         self.last_save = Instant::now();
 
-        let tmp_path = self.path.with_extension("tmp");
+        // Replace the file a symlinked path points at, keeping the link
+        // (ADR 0017).
+        let target = resolve_symlinks(&self.path);
+        let tmp_path = target.with_extension("tmp");
 
         if let Err(err) = self.file.save(&tmp_path, self.encoding) {
             eprintln!("LocalUserDictionary: can't save {}: {err}", tmp_path.display());
             return;
         }
 
-        if let Err(err) = std::fs::rename(&tmp_path, &self.path) {
+        if let Err(err) = std::fs::rename(&tmp_path, &target) {
             eprintln!("LocalUserDictionary: rename() failed: {err}");
         } else {
             self.dirty = false;
@@ -450,5 +453,107 @@ mod tests {
         assert_eq!(suite.candidates()[0].word(), "漢字");
 
         std::fs::remove_file(&path).ok();
+    }
+
+    // ADR 0017: a symlinked user dictionary stays a link; saves go to
+    // the file it points at.
+    #[cfg(unix)]
+    fn symlink_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join("nablaskk-core-test").join(name);
+        if dir.exists() {
+            set_writable(&dir, true);
+            std::fs::remove_dir_all(&dir).unwrap();
+        }
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        dir
+    }
+
+    #[cfg(unix)]
+    fn set_writable(dir: &Path, writable: bool) {
+        use std::os::unix::fs::PermissionsExt;
+        for entry in std::fs::read_dir(dir).unwrap().flatten() {
+            if entry.file_type().unwrap().is_dir() {
+                let mode = if writable { 0o755 } else { 0o555 };
+                std::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(mode)).unwrap();
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    fn assert_saved_through(link: &Path, target: &Path) {
+        {
+            let mut dict = LocalUserDictionary::open(link, Encoding::Utf8);
+            dict.register(&Entry::from_entry("かんじ"), &Candidate::new("漢字"));
+            dict.save(true);
+            assert!(!dict.dirty, "saved");
+        }
+
+        assert!(std::fs::symlink_metadata(link).unwrap().file_type().is_symlink(), "still a link");
+        let text = std::fs::read_to_string(target).unwrap();
+        assert!(text.contains("かんじ /漢字/"), "{text}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_writes_through_symlink() {
+        let dir = symlink_dir("user-symlink");
+        let target = dir.join("real/skk-jisyo");
+        std::fs::write(&target, ";; okuri-ari entries.\n;; okuri-nasi entries.\n").unwrap();
+        let link = dir.join("skk-jisyo");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        assert_saved_through(&link, &target);
+        assert!(!dir.join("real/skk-jisyo.tmp").exists());
+        assert!(!dir.join("skk-jisyo.tmp").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_writes_through_chained_relative_symlinks() {
+        let dir = symlink_dir("user-symlink-chain");
+        let target = dir.join("real/skk-jisyo");
+        std::fs::write(&target, ";; okuri-ari entries.\n;; okuri-nasi entries.\n").unwrap();
+        // link -> middle (relative) -> real/skk-jisyo (relative)
+        std::os::unix::fs::symlink("real/skk-jisyo", dir.join("middle")).unwrap();
+        let link = dir.join("skk-jisyo");
+        std::os::unix::fs::symlink("middle", &link).unwrap();
+
+        assert_saved_through(&link, &target);
+        assert!(std::fs::symlink_metadata(dir.join("middle")).unwrap().file_type().is_symlink());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_creates_target_of_dangling_symlink() {
+        let dir = symlink_dir("user-symlink-dangling");
+        let target = dir.join("real/skk-jisyo");
+        let link = dir.join("skk-jisyo");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        assert_saved_through(&link, &target);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_failure_keeps_symlink_and_dirty() {
+        let dir = symlink_dir("user-symlink-readonly");
+        let target = dir.join("real/skk-jisyo");
+        let original = ";; okuri-ari entries.\n;; okuri-nasi entries.\n";
+        std::fs::write(&target, original).unwrap();
+        let link = dir.join("skk-jisyo");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        set_writable(&dir, false);
+
+        let mut dict = LocalUserDictionary::open(&link, Encoding::Utf8);
+        dict.register(&Entry::from_entry("かんじ"), &Candidate::new("漢字"));
+        dict.save(true);
+        let dirty = dict.dirty;
+        dict.private_mode = true; // skip the save on drop
+        drop(dict);
+        set_writable(&dir, true);
+
+        assert!(dirty, "unsaved");
+        assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink(), "still a link");
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), original);
     }
 }

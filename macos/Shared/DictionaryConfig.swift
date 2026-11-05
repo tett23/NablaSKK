@@ -160,8 +160,9 @@ enum DictionaryConfig {
         return entries
     }
 
-    static func save(_ entries: [DictionaryEntry]) throws {
-        try serialize(entries).write(to: fileURL, atomically: true, encoding: .utf8)
+    /// Keeps a symlinked file a link (ADR 0017).
+    static func save(_ entries: [DictionaryEntry], to url: URL = fileURL) throws {
+        try ConfigFile.write(serialize(entries), to: url)
     }
 
     /// Directory that holds dictionaries imported through the preferences
@@ -200,6 +201,6 @@ enum DictionaryConfig {
     }
 
     static var modificationDate: Date? {
-        (try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.modificationDate] as? Date
+        ConfigFile.modificationDate(of: fileURL)
     }
 }

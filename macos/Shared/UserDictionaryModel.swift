@@ -197,12 +197,13 @@ struct UserDictionary: Equatable {
         return dictionary
     }
 
-    /// Write atomically, preserving the file's encoding.
+    /// Write atomically, preserving the file's encoding. A symlinked file
+    /// stays a link (ADR 0017).
     func save(to url: URL = fileURL) throws {
         let encoding: String.Encoding = isEUC ? .japaneseEUC : .utf8
         guard let data = serialize().data(using: encoding) else {
             throw CocoaError(.fileWriteInapplicableStringEncoding)
         }
-        try data.write(to: url, options: .atomic)
+        try ConfigFile.write(data, to: url)
     }
 }

@@ -37,7 +37,7 @@ final class UserDictionaryStore: ObservableObject {
     }
 
     private var modificationDate: Date? {
-        (try? FileManager.default.attributesOfItem(atPath: UserDictionary.fileURL.path))?[.modificationDate] as? Date
+        ConfigFile.modificationDate(of: UserDictionary.fileURL)
     }
 
     /// Switching panes in the sidebar discards this store; flush an edit

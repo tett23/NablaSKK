@@ -714,6 +714,90 @@ check(AppVersion.accessibilityLabel(["CFBundleShortVersionString": "1.2.0", "Nab
       && AppVersion.accessibilityLabel(["CFBundleShortVersionString": "1.2.0"]) == "バージョン 1.2.0",
       "version: VoiceOver label")
 
+// ADR 0017: a symlinked config file stays a link; saves go to the file
+// it points at, and changes to that file are noticed.
+do {
+    let fm = FileManager.default
+    let dir = fm.temporaryDirectory.appendingPathComponent("nablaskk-symlink-\(getpid())", isDirectory: true)
+    let real = dir.appendingPathComponent("real", isDirectory: true)
+    try? fm.removeItem(at: dir)
+    try! fm.createDirectory(at: real, withIntermediateDirectories: true)
+    defer {
+        try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: real.path)
+        try? fm.removeItem(at: dir)
+    }
+
+    func isLink(_ url: URL) -> Bool {
+        (try? fm.attributesOfItem(atPath: url.path))?[.type] as? FileAttributeType == .typeSymbolicLink
+    }
+
+    /// `name` -> real/`name`, or `name` -> `name`.middle -> real/`name`
+    /// (relative links) when chained.
+    func link(_ name: String, chained: Bool = false) -> (link: URL, target: URL) {
+        let target = real.appendingPathComponent(name)
+        try! "old\n".write(to: target, atomically: false, encoding: .utf8)
+        let link = dir.appendingPathComponent(name)
+        if chained {
+            try! fm.createSymbolicLink(atPath: dir.appendingPathComponent(name + ".middle").path,
+                                       withDestinationPath: "real/" + name)
+            try! fm.createSymbolicLink(atPath: link.path, withDestinationPath: name + ".middle")
+        } else {
+            try! fm.createSymbolicLink(atPath: link.path, withDestinationPath: target.path)
+        }
+        return (link, target)
+    }
+
+    func checkSaved(_ label: String, _ name: String, chained: Bool = false, _ save: (URL) throws -> Void) {
+        let (url, target) = link(name, chained: chained)
+        do {
+            try save(url)
+        } catch {
+            check(false, "symlink: \(label) saves (\(error))")
+            return
+        }
+        let text = (try? String(contentsOf: target, encoding: .utf8)) ?? ""
+        check(isLink(url) && text != "old\n" && !text.isEmpty, "symlink: \(label) writes through the link")
+    }
+
+    checkSaved("settings.conf", "settings.conf") { try InputSettings().save(to: $0) }
+    checkSaved("keymap.conf", "keymap.conf") { try KeymapSettings().save(to: $0) }
+    checkSaved("kana-rule.conf", "kana-rule.conf") {
+        try KanaRuleSettings(rules: [KanaRule(input: "fj", output: "、")]).save(to: $0)
+    }
+    checkSaved("dictionaries.conf", "dictionaries.conf") {
+        try DictionaryConfig.save(DictionaryConfig.parse("0 /tmp/SKK-JISYO.L\n"), to: $0)
+    }
+    checkSaved("skk-jisyo", "skk-jisyo") {
+        try UserDictionary.parse(";; okuri-ari entries.\n;; okuri-nasi entries.\nかんじ /漢字/\n").save(to: $0)
+    }
+    checkSaved("two links", "chained.conf", chained: true) { try InputSettings().save(to: $0) }
+    check(isLink(dir.appendingPathComponent("chained.conf.middle")), "symlink: the middle link stays a link")
+
+    // A dangling link: the save creates the file it names
+    let dangling = dir.appendingPathComponent("dangling.conf")
+    let missing = real.appendingPathComponent("dangling.conf")
+    try! fm.createSymbolicLink(atPath: dangling.path, withDestinationPath: missing.path)
+    try? InputSettings().save(to: dangling)
+    check(isLink(dangling) && fm.fileExists(atPath: missing.path), "symlink: dangling link gets its target created")
+
+    // An unwritable target directory: the save fails and the link stays
+    let (readonly, readonlyTarget) = link("readonly.conf")
+    try! fm.setAttributes([.posixPermissions: 0o555], ofItemAtPath: real.path)
+    var failed = false
+    do { try InputSettings().save(to: readonly) } catch { failed = true }
+    try! fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: real.path)
+    check(failed && isLink(readonly) && (try? String(contentsOf: readonlyTarget, encoding: .utf8)) == "old\n",
+          "symlink: unwritable target fails and keeps the link")
+
+    // Modification dates are the target's
+    let (dated, datedTarget) = link("dated.conf")
+    let date = Date(timeIntervalSince1970: 1_000_000_000)
+    try! fm.setAttributes([.modificationDate: date], ofItemAtPath: datedTarget.path)
+    check(ConfigFile.modificationDate(of: dated) == date, "symlink: modification date is the target's")
+    check(ConfigFile.modificationDate(of: dir.appendingPathComponent("nothing.conf")) == nil,
+          "symlink: missing file has no modification date")
+}
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)
