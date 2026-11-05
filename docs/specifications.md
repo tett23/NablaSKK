@@ -114,8 +114,8 @@ AquaSKK の `SKK-JISYO.L` があればそれを使う。1 行に「タイプ 場
 | `input_style` | `standard` / `azik` / `azik_us` / `act` | `standard` | 入力方式(補助ルール)。未知の値は `standard` |
 | `yakumono_ippai` | `on` / `off` | `off` | 記号入力(SKK日本語入力FEP/Egg 互換) |
 | `old_kana` | `on` / `off` | `off` | 旧かな(ゐ・ゑ・くゎ・ぐゎ) |
-| `comma` | `japanese` / `fullwidth` | `japanese` | `,` を `、` / `，` にする |
-| `period` | `japanese` / `fullwidth` | `japanese` | `.` を `。` / `．` にする |
+| `comma` | `japanese` / `fullwidth` | `japanese` | `,` を `、` / `，` にする。`fullwidth` ではユーザー定義のルールの出力の `、` も `，` にする |
+| `period` | `japanese` / `fullwidth` | `japanese` | `.` を `。` / `．` にする。`fullwidth` ではユーザー定義のルールの出力の `。` も `．` にする |
 | `suggest` | `on` / `off` | `off` | ▽入力中に、読みで始まる見出し語を一覧する(TAB で補完) |
 | `suggest_count` | 1〜20 | 5 | 一覧する件数 |
 | `completion_extended` | `on` / `off` | `on` | 補完・サジェストにシステム辞書も使う(off はユーザー辞書のみ) |
@@ -142,6 +142,12 @@ AquaSKK の `SKK-JISYO.L` があればそれを使う。1 行に「タイプ 場
 - 入力キーが空、空白・全角・大文字を含む、9 文字以上、`q` `l` `/` で始まる
 - 組み込みや先に追加したルールと同一、または入力キーが衝突する
 - 最後のキーで確定している既存ルールを延長する(`ka.` で `ka` が待つようになる)
+
+出力の `、` `。` は句読点の設定に従う。読点・句点が全角(`comma=fullwidth`、
+`period=fullwidth`)のとき、エンジンに渡す前に、ひらがな・カタカナの出力の `、` `。` を
+`，` `．` に、半角カナの出力の `､` `｡` を `,` `.` にする(`,` `.` を全角にするルールと同じ対応)。
+出力のどこにあっても置き換える。ファイルと設定アプリの表示は書いたとおりのまま。組み込みや
+補助ルールの出力は置き換えない([ADR 0019](adr/0019-user-rules-follow-punctuation-settings.md))。
 
 ## 6. 設定アプリ
 

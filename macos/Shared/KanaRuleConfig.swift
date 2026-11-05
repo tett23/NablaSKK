@@ -81,8 +81,19 @@ struct KanaRule: Identifiable, Equatable {
     }
 
     /// kana-rule.conf line: "input,ひらがな,カタカナ,半角カナ".
-    var line: String {
-        [Self.escape(input, isKey: true), Self.escape(output), Self.escape(katakana), Self.escape(jisx0201Kana)]
+    var line: String { line(fullWidthComma: false, fullWidthPeriod: false) }
+
+    /// The line handed to the engine: with a full-width comma or period
+    /// setting, 、 and 。 become ， and ． (､ and ｡ become , and . in
+    /// half-width kana), as the setting's own , and . rules do (ADR 0019).
+    func line(fullWidthComma: Bool, fullWidthPeriod: Bool) -> String {
+        func punctuated(_ text: String, comma: (String, String), period: (String, String)) -> String {
+            let withComma = fullWidthComma ? text.replacingOccurrences(of: comma.0, with: comma.1) : text
+            return fullWidthPeriod ? withComma.replacingOccurrences(of: period.0, with: period.1) : withComma
+        }
+        let kana = { punctuated($0, comma: ("、", "，"), period: ("。", "．")) }
+        let halfWidth = punctuated(jisx0201Kana, comma: ("､", ","), period: ("｡", "."))
+        return [Self.escape(input, isKey: true), Self.escape(kana(output)), Self.escape(kana(katakana)), Self.escape(halfWidth)]
             .joined(separator: ",")
     }
 
@@ -121,8 +132,13 @@ struct KanaRuleSettings: Equatable {
 
     /// Rule text for the engine: usable rules only, in order (a later
     /// rule for the same input wins).
-    var patchText: String {
-        rules.filter { $0.problem == nil }.map { $0.line + "\n" }.joined()
+    var patchText: String { patchText(fullWidthComma: false, fullWidthPeriod: false) }
+
+    /// `patchText` with 、 and 。 following the punctuation settings (ADR 0019).
+    func patchText(fullWidthComma: Bool, fullWidthPeriod: Bool) -> String {
+        rules.filter { $0.problem == nil }
+            .map { $0.line(fullWidthComma: fullWidthComma, fullWidthPeriod: fullWidthPeriod) + "\n" }
+            .joined()
     }
 
     static func parse(_ text: String) -> KanaRuleSettings {

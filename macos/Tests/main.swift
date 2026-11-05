@@ -524,6 +524,30 @@ do {
         return s.takeFixed()
     }
 
+    // ADR 0019: user rules' 、 and 。 follow the punctuation settings
+    let punctuationRules = KanaRuleSettings(rules: [KanaRule(input: "fj", output: "、"), KanaRule(input: "fk", output: "。"),
+                                                    KanaRule(input: "ds", output: "です。")])
+    var fullWidth = InputSettings(); fullWidth.fullWidthComma = true; fullWidth.fullWidthPeriod = true
+    let full = session(fullWidth, userRules: punctuationRules)
+    check(typed(full, "fj") == "，" && typed(full, "fk") == "．", "punctuation: fj and fk follow full-width settings")
+    check(typed(full, "ds") == "です．", "punctuation: a period inside an output follows too")
+    full.inputMode = .katakana
+    check(typed(full, "fj") == "，" && typed(full, "fk") == "．", "punctuation: katakana follows too")
+    full.inputMode = .jisx0201kana
+    check(typed(full, "fj") == "," && typed(full, "fk") == ".", "punctuation: half-width kana uses , and .")
+    var commaOnly = InputSettings(); commaOnly.fullWidthComma = true
+    let comma = session(commaOnly, userRules: punctuationRules)
+    check(typed(comma, "fj") == "，" && typed(comma, "fk") == "。", "punctuation: only the comma follows a comma-only setting")
+    var periodOnly = InputSettings(); periodOnly.fullWidthPeriod = true
+    let period = session(periodOnly, userRules: punctuationRules)
+    check(typed(period, "fj") == "、" && typed(period, "fk") == "．", "punctuation: only the period follows a period-only setting")
+    let japanese = session(InputSettings(), userRules: punctuationRules)
+    check(typed(japanese, "fj") == "、" && typed(japanese, "fk") == "。", "punctuation: default settings keep 、 and 。")
+    japanese.inputMode = .jisx0201kana
+    check(typed(japanese, "fj") == "､" && typed(japanese, "fk") == "｡", "punctuation: default half-width kana keeps ､ and ｡")
+    check(punctuationRules.serialize().contains("\nfj,、,、,､\n") && punctuationRules.serialize().contains("\nfk,。,。,｡\n"),
+          "punctuation: kana-rule.conf keeps the rules as written")
+
     // Standard
     let standard = session(InputSettings())
     standard.handle(charcode: UInt8(ascii: "q"))
