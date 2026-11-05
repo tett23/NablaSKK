@@ -333,8 +333,30 @@ do {
         if fields.count == 2, !fields[0].hasPrefix("#") { defaults[String(fields[0])] = String(fields[1]) }
     }
     for action in KeymapSettings.actions {
-        check(defaults[action.symbol] == action.defaultKeys, "keymap: default for \(action.symbol) matches data/keymap.conf")
+        // An action with no default key has no line (ADR 0022)
+        check(defaults[action.symbol] == (action.defaultKeys.isEmpty ? nil : action.defaultKeys),
+              "keymap: default for \(action.symbol) matches data/keymap.conf")
     }
+
+    // ADR 0022: SwitchToAsciiIfIdle, no default key
+    let ifIdle = KeymapSettings.actions.first { $0.symbol == "SwitchToAsciiIfIdle" }
+    check(ifIdle?.label == "英数モードへ (入力中は何もしない)" && ifIdle?.defaultKeys == "",
+          "keymap: SwitchToAsciiIfIdle is offered with no default key")
+    let idleKeymap = KeymapSettings.parse("SwitchToAsciiIfIdle\tkeycode::0x50\n")
+    check(idleKeymap.overrideText == "SwitchToAsciiIfIdle\tkeycode::0x50", "keymap: SwitchToAsciiIfIdle is read from the file")
+    func idleSession() -> SKKSession {
+        let s = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-ifidle-test")
+        EngineSetup.applyKeymap(to: s, settings: InputSettings(), keymap: idleKeymap,
+                                subRuleDirectory: URL(fileURLWithPath: "data", isDirectory: true))
+        return s
+    }
+    let idle = idleSession()
+    check(idle.handle(charcode: 0, keycode: 0x50) && idle.inputMode == .ascii, "keymap: F19 switches to ASCII when idle")
+    let busy = idleSession()
+    for c in "Kanji".utf8 { busy.handle(charcode: c, mods: c == UInt8(ascii: "K") ? .shift : []) }
+    check(busy.handle(charcode: 0, keycode: 0x50) && busy.composing == "▽かんじ" && busy.inputMode == .hirakana
+          && busy.takeFixed() == "", "keymap: F19 leaves a reading alone")
+
 
     for good in ["ctrl::j", "group::hex::0x03,0x0a,0x0d||ctrl::m", "keycode::7b", "alt::hex::0x20||shift::hex::0x20",
                  "group::A-K,M-P,R-Z", "/", "ctrl::/"] {

@@ -50,6 +50,7 @@ fn lookup_symbol(name: &str) -> Option<Symbol> {
         "ToggleKana" => Attribute(TOGGLE_KANA),
         "ToggleJisx0201Kana" => Attribute(TOGGLE_JISX0201_KANA),
         "SwitchToAscii" => Attribute(SWITCH_TO_ASCII),
+        "SwitchToAsciiIfIdle" => Attribute(SWITCH_TO_ASCII_IF_IDLE),
         "SwitchToJisx0208Latin" => Attribute(SWITCH_TO_JISX0208_LATIN),
         "EnterJapanese" => Attribute(ENTER_JAPANESE),
         "EnterAbbrev" => Attribute(ENTER_ABBREV),
@@ -406,5 +407,20 @@ mod tests {
         assert_eq!(keymap.fetch(b'@', 0, 0), Event::new(EventId::Char, b'@', TOGGLE_KANA | INPUT_CHARS));
         // other bindings are untouched
         assert_eq!(keymap.fetch(b'g', 0, CTRL), Event::new(EventId::Cancel, b'g', 0));
+    }
+
+    // ADR 0022
+    #[test]
+    fn switch_to_ascii_if_idle_symbol() {
+        let mut keymap = Keymap::new();
+        keymap.load("SwitchToAscii\tl\nSwitchToAsciiIfIdle\tkeycode::0x50\n");
+
+        let f19 = keymap.fetch(0, 0x50, 0);
+        assert_eq!(f19.id, EventId::Char);
+        assert!(f19.is_switch_to_ascii_if_idle());
+        assert!(!f19.is_switch_to_ascii());
+
+        let l = keymap.fetch(b'l', 0, 0);
+        assert!(l.is_switch_to_ascii() && !l.is_switch_to_ascii_if_idle());
     }
 }

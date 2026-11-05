@@ -969,6 +969,18 @@ impl Session {
         if self.in_event {
             return false;
         }
+
+        // ADR 0022: consumed without effect while composing or registering,
+        // left to the application in ASCII, otherwise the ASCII mode key
+        if event.is_switch_to_ascii_if_idle() {
+            if self.is_busy() {
+                return true;
+            }
+            if self.input_mode() == InputMode::Ascii {
+                return false;
+            }
+            return self.handle_event(&Event::new(EventId::AsciiMode, event.code, 0));
+        }
         self.in_event = true;
 
         self.begin_event();
@@ -1116,9 +1128,14 @@ impl Session {
         }
     }
 
+    /// Registering a word, or something is being composed
+    fn is_busy(&self) -> bool {
+        self.stack.len() != 1 || self.context.output.is_composing()
+    }
+
     fn result(&self, event: &Event) -> bool {
         // Always handled while registering or composing
-        if self.stack.len() != 1 || self.context.output.is_composing() {
+        if self.is_busy() {
             return true;
         }
 

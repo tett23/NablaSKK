@@ -15,6 +15,9 @@ struct KeymapAction: Identifiable, Equatable {
     let defaultKeys: String
 
     var id: String { symbol }
+
+    /// The default as shown in the preferences app ("なし" when unbound)
+    var defaultLabel: String { defaultKeys.isEmpty ? "なし" : defaultKeys }
 }
 
 /// Per-action key overrides. Stored as `keymap.conf` in the support
@@ -28,8 +31,9 @@ struct KeymapSettings: Equatable {
     static var fileURL: URL { DictionaryConfig.supportDirectory.appendingPathComponent(fileName) }
 
     /// Actions offered by the preferences app. Defaults must match
-    /// data/keymap.conf (checked by the macOS tests). SKK_PASTE is left
-    /// out: the input method recognises its keys before the engine does.
+    /// data/keymap.conf, and an action with no default has no line there
+    /// (checked by the macOS tests). SKK_PASTE is left out: the input
+    /// method recognises its keys before the engine does.
     static let actions: [KeymapAction] = [
         KeymapAction(symbol: "SKK_JMODE", label: "かなモードへ", defaultKeys: "ctrl::j"),
         KeymapAction(symbol: "SKK_ENTER", label: "確定", defaultKeys: "group::hex::0x03,0x0a,0x0d||ctrl::m"),
@@ -46,6 +50,8 @@ struct KeymapSettings: Equatable {
         KeymapAction(symbol: "ToggleKana", label: "ひらがな / カタカナ切替", defaultKeys: "q"),
         KeymapAction(symbol: "ToggleJisx0201Kana", label: "半角カナ切替", defaultKeys: "ctrl::q"),
         KeymapAction(symbol: "SwitchToAscii", label: "英数モードへ", defaultKeys: "l"),
+        // NablaSKK's own (ADR 0022): nothing while composing or registering
+        KeymapAction(symbol: "SwitchToAsciiIfIdle", label: "英数モードへ (入力中は何もしない)", defaultKeys: ""),
         KeymapAction(symbol: "SwitchToJisx0208Latin", label: "全角英数モードへ", defaultKeys: "L"),
         KeymapAction(symbol: "EnterAbbrev", label: "abbrev モードへ", defaultKeys: "/"),
         KeymapAction(symbol: "EnterJapanese", label: "日本語入力開始 (Q)", defaultKeys: "Q"),
