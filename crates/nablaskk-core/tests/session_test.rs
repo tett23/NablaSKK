@@ -395,3 +395,119 @@ fn registration_word_cursor_movement() {
     assert_eq!(h.composing(), "[登録：みかん]あいう");
     assert_eq!(h.frontend.borrow().cursor, -1);
 }
+
+// ADR 0022: SwitchToAsciiIfIdle switches to ASCII only when nothing is
+// being composed or registered; otherwise it does nothing at all.
+
+const F19: u8 = 0x50;
+
+fn idle_harness() -> Harness {
+    let mut h = Harness::new();
+    h.keymap.load("SwitchToAsciiIfIdle\tkeycode::0x50\n");
+    h
+}
+
+impl Harness {
+    fn press_f19(&mut self) -> bool {
+        let event = self.keymap.fetch(0, F19, 0);
+        self.session.handle_event(&event)
+    }
+}
+
+#[test]
+fn if_idle_switches_to_ascii_when_idle() {
+    let mut h = idle_harness();
+    assert!(h.press_f19());
+    assert_eq!(h.session.input_mode(), InputMode::Ascii);
+    assert_eq!(h.fixed(), "");
+}
+
+#[test]
+fn if_idle_keeps_a_reading() {
+    let mut h = idle_harness();
+    h.type_str("Kanji");
+    assert!(h.press_f19());
+    assert_eq!(h.composing(), "▽かんじ");
+    assert_eq!(h.fixed(), "");
+    assert_eq!(h.session.input_mode(), InputMode::Hirakana);
+}
+
+#[test]
+fn if_idle_keeps_a_conversion() {
+    let mut h = idle_harness();
+    h.type_str("Kanji ");
+    assert!(h.press_f19());
+    assert_eq!(h.composing(), "▼漢字");
+    assert_eq!(h.fixed(), "");
+}
+
+#[test]
+fn if_idle_after_cancel_keeps_the_reading() {
+    // The worker's case: ▼漢字, Esc, then the F19 Karabiner sends
+    let mut h = idle_harness();
+    h.type_str("Kanji ");
+    h.press_ctrl(b'g');
+    assert_eq!(h.composing(), "▽かんじ");
+    assert!(h.press_f19());
+    assert_eq!(h.composing(), "▽かんじ");
+    assert_eq!(h.fixed(), "");
+    assert_eq!(h.session.input_mode(), InputMode::Hirakana);
+}
+
+#[test]
+fn if_idle_keeps_okuri_input() {
+    let mut h = idle_harness();
+    h.type_str("OkuR");
+    let before = h.composing();
+    assert!(before.contains('*'), "{before}");
+    assert!(h.press_f19());
+    assert_eq!(h.composing(), before);
+    assert_eq!(h.fixed(), "");
+}
+
+#[test]
+fn if_idle_keeps_registration() {
+    let mut h = idle_harness();
+    h.type_str("Mikan ");
+    assert!(h.composing().contains("[登録：みかん]"));
+    assert!(h.press_f19());
+    assert!(h.composing().contains("[登録：みかん]"));
+    h.type_str("a");
+    assert_eq!(h.composing(), "[登録：みかん]あ", "registration continues in kana");
+}
+
+#[test]
+fn if_idle_in_ascii_passes_through() {
+    let mut h = idle_harness();
+    h.type_str("l");
+    assert_eq!(h.session.input_mode(), InputMode::Ascii);
+    assert!(!h.press_f19());
+    assert_eq!(h.session.input_mode(), InputMode::Ascii);
+}
+
+#[test]
+fn if_idle_from_katakana_and_jisx0208_latin() {
+    let mut h = idle_harness();
+    h.type_str("q");
+    assert_eq!(h.session.input_mode(), InputMode::Katakana);
+    assert!(h.press_f19());
+    assert_eq!(h.session.input_mode(), InputMode::Ascii);
+
+    let mut h = idle_harness();
+    h.type_str("L");
+    assert_eq!(h.session.input_mode(), InputMode::Jisx0208Latin);
+    assert!(h.press_f19());
+    assert_eq!(h.session.input_mode(), InputMode::Ascii);
+}
+
+#[test]
+fn switch_to_ascii_still_commits_the_reading() {
+    // The shipped keymap: the test keymap puts l in UpperCases
+    let mut h = idle_harness();
+    h.keymap = Keymap::new();
+    h.keymap.load(include_str!("../../../data/keymap.conf"));
+    h.type_str("Kanji");
+    h.type_str("l");
+    assert_eq!(h.fixed(), "かんじ");
+    assert_eq!(h.session.input_mode(), InputMode::Ascii);
+}

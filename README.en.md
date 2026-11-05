@@ -99,7 +99,10 @@ your own romaji-to-kana rules like the built-in `z.` → `…` (for example `fj`
 
 Key bindings can be changed per action on the "キー" (Keys) page of the preferences app
 (keymap.conf syntax; only the differences are saved to `keymap.conf`; leave a field empty for
-the default).
+the default). One action is NablaSKK's own: "英数モードへ (入力中は何もしない)"
+(`SwitchToAsciiIfIdle`, ASCII mode unless composing) does nothing while you are composing and
+switches to ASCII mode otherwise (no default key). It suits a key sent right after Esc, for
+example by Karabiner.
 
 skkserv can be set up on the "skkserv" page of the preferences app: host, port and encoding
 (EUC-JP / UTF-8), saved in `settings.conf`. The server is asked after all local dictionaries

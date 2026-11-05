@@ -60,6 +60,9 @@ pub mod attribute {
     pub const INPUT_CHARS: u32 = 1 << 13;
     pub const COMP_CONVERSION: u32 = 1 << 14;
     pub const STICKY_KEY: u32 = 1 << 15;
+    /// NablaSKK's own: SwitchToAscii only when nothing is being composed
+    /// or registered (ADR 0022).
+    pub const SWITCH_TO_ASCII_IF_IDLE: u32 = 1 << 16;
 }
 
 /// Handling options.
@@ -102,6 +105,9 @@ impl Event {
     }
     pub fn is_switch_to_ascii(&self) -> bool {
         self.attribute & attribute::SWITCH_TO_ASCII != 0
+    }
+    pub fn is_switch_to_ascii_if_idle(&self) -> bool {
+        self.attribute & attribute::SWITCH_TO_ASCII_IF_IDLE != 0
     }
     pub fn is_switch_to_jisx0208_latin(&self) -> bool {
         self.attribute & attribute::SWITCH_TO_JISX0208_LATIN != 0

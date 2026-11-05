@@ -92,12 +92,12 @@ struct KeymapRow: View {
 
             // An invalid spec is said in words under the field (ADR 0006)
             VStack(alignment: .leading, spacing: 2) {
-                TextField(action.defaultKeys, text: $text, onCommit: commit)
+                TextField(action.defaultLabel, text: $text, onCommit: commit)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
                     .overlay(RoundedRectangle(cornerRadius: 5)
                         .stroke(isValid ? Color.clear : Color.prefError, lineWidth: 1.5))
-                    .help("デフォルト: \(action.defaultKeys)")
+                    .help("デフォルト: \(action.defaultLabel)")
                     .accessibilityLabel(PreferencesAccessibility.keyField(action.label))
                     .onChange(of: text) { _ in
                         if isValid { commit() }
@@ -108,7 +108,7 @@ struct KeymapRow: View {
                         .foregroundColor(.prefError)
                 } else if isOverridden {
                     // The default was only in the tooltip (ADR 0007)
-                    Text("デフォルト: \(action.defaultKeys)")
+                    Text("デフォルト: \(action.defaultLabel)")
                         .font(.subheadline)
                         .foregroundColor(.prefSecondary)
                 }
@@ -120,7 +120,7 @@ struct KeymapRow: View {
             .buttonStyle(.borderless)
             .frame(width: Self.resetWidth)
             .disabled(!isOverridden)
-            .help("デフォルト (\(action.defaultKeys)) に戻す")
+            .help("デフォルト (\(action.defaultLabel)) に戻す")
             .accessibilityLabel(PreferencesAccessibility.resetKey(action.label))
         }
         .padding(.vertical, 2)
