@@ -46,6 +46,17 @@ Portions derived from third-party work bundled with AquaSKK:
     from SKK (Simple Kana to Kanji conversion program) by Masahiko Sato
     and the SKK Development Team (https://skk-dev.github.io/dict/).
 
+  * data/SKK-JISYO.S — Small size dictionary for SKK system, shipped
+    unchanged (EUC-JP) with the wasm build (ADR 0023). From skk-dev/dict
+    (https://github.com/skk-dev/dict), commit
+    f415e667775957326de57a26ae891b155b567d6c.
+    Copyright (C) 1988-1995, 1997, 1999-2003 Masahiko Sato, Hironobu
+    Takahashi, Masahiro Doteguchi, Miki Inooka, Yukiyoshi Kameyama,
+    Akihiko Sasaki, Dai Ando, Junichi Okukawa, Katsushi Sato and
+    Nobuhiro Yamagishi. Maintainer: SKK Development Team.
+    License: GNU General Public License version 2 or (at your option)
+    any later version (as stated in the file's header).
+
 BSD license text
 ----------------
 

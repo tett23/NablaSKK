@@ -246,3 +246,73 @@ C ABI。正は `crates/nablaskk-ffi/include/nablaskk.h`、Swift ラッパーは
   (このバージョンの macOS でのアクセシビリティの許可の画面)に NablaSKK が出なかったこと。
   キーイベントを送るには、この許可を与える手順(ad-hoc 署名のため差し替えのたびに
   与え直す見込み)が要る。実装は main に入れていない。
+
+## 12. wasm(nablaskk-wasm)
+
+ブラウザ(Safari・Chrome)と Deno でエンジンを動かすための wasm([ADR 0023](adr/0023-wasm-engine-for-web-demo.md))。
+`wasm32-unknown-unknown` でビルドし、リリースに `nablaskk.wasm` として添付する。同梱する辞書は
+`data/SKK-JISYO.S`(skk-dev/dict のコミット f415e667775957326de57a26ae891b155b567d6c のもの、
+EUC-JP、55,683 バイト、GPL v2 以降)で、リリースに `SKK-JISYO.S` として添付する。添付するファイルの名前は版を
+またいで変えない。
+
+- import は無い(`WebAssembly.instantiate(bytes, {})` で読みこめる)。線形メモリは `memory` としてエクスポートされる。
+- wasm-bindgen は使わない C ABI。バイト列は線形メモリ上の (ポインタ, バイト長) で受け渡し、NUL 終端にしない。
+  JavaScript ではポインタが i32 になるので `>>> 0` で符号なしにする。
+- この wasm が返すバッファは、先頭 4 バイトが本体のバイト長(リトルエンディアンの u32)、続いて UTF-8 の本体。
+  読んだら `nablaskk_free(ptr, 4 + 本体の長さ)` で解放する。引数のバッファは `nablaskk_alloc` で確保し、呼んだ後に
+  `nablaskk_free` で解放する(wasm はバッファを持ちつづけない)。
+- セッションはスレッド非対応。
+- 時計・ファイル・ネットワークを使わない。ユーザー辞書はメモリの上だけに置き(`LocalUserDictionary::in_memory`)、
+  セッションを破棄すると消える。skkserv・自動更新の辞書・日時の辞書は使えない。
+
+| 関数 | 引数 | 戻り値 |
+| --- | --- | --- |
+| `nablaskk_alloc` | `len` | `len` バイトのバッファ |
+| `nablaskk_free` | `ptr, len` | なし |
+| `nablaskk_session_new` | `keymap_ptr, keymap_len, rules_ptr, rules_len, dict_ptr, dict_len` | セッション |
+| `nablaskk_session_free` | `session` | なし |
+| `nablaskk_handle` | `session, charcode, keycode, mods` | `1`(IME が処理した)/ `0` |
+| `nablaskk_take_state` | `session` | 表示の状態(JSON)のバッファ |
+| `nablaskk_set_user_rules` | `session, ptr, len` | 各行の結果(JSON)のバッファ |
+
+- `nablaskk_session_new`: キーマップ(keymap.conf の形式)とローマ字かなルール(kana-rule.conf の形式)は UTF-8 で、
+  長さ 0 なら埋めこんだ `data/keymap.conf` と `data/kana-rule.utf8.conf` を使う。辞書は SKK-JISYO の形式のバイト列で、
+  EUC-JP か UTF-8 かを wasm の中で判別する。長さ 0 なら辞書を足さない。設定は本家の既定値で、注釈だけを有効にする。
+- `nablaskk_handle` の値は `macos/Sources/KeyTranslator.swift` と同じ。`mods` は shift=2、ctrl=4、alt=8、meta=16 の和。
+  ブラウザの `KeyboardEvent` からの変換はページ側で行う。
+
+  | `key` | `charcode` | `keycode` |
+  | --- | --- | --- |
+  | `Enter` | `0x0d` | `0x24` |
+  | `Tab` | `0x09` | `0x30` |
+  | ` `(Space) | `0x20` | `0x31` |
+  | `Backspace` | `0x08` | `0x33` |
+  | `Escape` | `0x1b` | `0x35` |
+  | `Delete` | `0x7f` | `0x75` |
+  | `ArrowLeft` / `ArrowRight` / `ArrowDown` / `ArrowUp` | `0` | `0x7b` / `0x7c` / `0x7d` / `0x7e` |
+
+  そのほかのキーの `charcode` は、`key` が ASCII の印字可能な 1 文字ならその文字(Shift つきなら Shift の付いた文字)。
+  Option を押して `key` が ASCII でないときは、`code` の物理キーの US 配列の文字。どちらでもなければ `0`。
+  Ctrl を押したときも文字のまま(`ctrl::j` なら `j`)。`keycode` は `code` の物理キーの macOS の仮想キーコード
+  (`HIToolbox/Events.h` の `kVK_*`、テンキーは `kVK_ANSI_Keypad*`)で、対応の無いキーは `0xff`。
+- `nablaskk_take_state` の JSON。`fixed`(確定した文字列)は取り出すと空になる。
+
+  ```json
+  {"fixed":"","composing":"▼漢字","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+  ```
+
+  - `composing` は ▽▼ の付いた入力中の文字列、`cursor` はその中のカーソル(末尾からの文字数、0 は末尾、-1 は最後の文字の前)。
+  - `mode` は `hirakana`・`katakana`・`jisx0201kana`・`ascii`・`jisx0208latin`。
+  - `candidates` は候補のウィンドウ。▼ で 4 つの候補を見せた後の Space(5 回目)で `visible` が真になり、`items` に
+    そのページの候補が入る。ウィンドウが閉じているときは、ほかの欄も空と 0 になる。
+  - `annotation` は選んでいる候補の注釈。無ければ `null`。
+- `nablaskk_set_user_rules`: ユーザーのローマ字かなルール(kana-rule.conf の形式の行、UTF-8)を丸ごと入れかえる。
+  セッションを作ったときのルールに戻してから、問題もぶつかりも無い行だけを上から順に足す。判定と理由の文言は設定アプリと
+  同じ(組み込みのルールの名前は「組み込み」)。`入力,ひらがな,カタカナ,半角カナ` の 4 つの欄がそろわない行は反映しない。
+  空の行と `#` で始まる行を除く行ごとに、結果を返す。
+
+  ```json
+  [{"line":1,"input":"fj","applied":true,"reason":null},{"line":2,"input":"ka.","applied":false,"reason":"「ka → か」がすぐに確定しなくなるため使えません"}]
+  ```
+- テスト: `crates/nablaskk-wasm/testdata/scenarios.txt` の同じシナリオを、ネイティブ(`cargo test`)と wasm
+  (`crates/nablaskk-wasm/deno/wasm_test.ts`、CI の `build-wasm` のジョブ)の両方で回す。本家の受け入れテストは wasm では回さない。

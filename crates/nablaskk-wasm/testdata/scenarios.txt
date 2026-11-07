@@ -1,0 +1,78 @@
+# Shared scenarios for the native and wasm builds (ADR 0023).
+#
+# Written by tett23, 2026.
+# License: GPL-2.0-or-later. See the LICENSE file for details.
+#
+# Tab-separated lines, replayed in order on one session (built-in keymap
+# and rules, data/SKK-JISYO.S):
+#   new                          start a fresh session
+#   keys  <keys>  <state>        press the keys, then nablaskk_take_state
+#   rules <text>  <result>       nablaskk_set_user_rules (\n = newline)
+# Keys: printable ASCII as is (capitals and shifted symbols carry shift),
+# <SPC> <RET> <ESC> <BS> <TAB> <DEL> <LEFT> <RIGHT> <UP> <DOWN> <lt>, and
+# <C-x> for Ctrl+x. The state and result must match byte for byte.
+
+# Direct input
+keys	a	{"fixed":"あ","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	k	{"fixed":"","composing":"k","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	a	{"fixed":"か","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	tt	{"fixed":"っ","composing":"t","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-g>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+# Conversion and okuri
+keys	Kanji	{"fixed":"","composing":"▽かんじ","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<SPC>	{"fixed":"","composing":"▼漢字","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<SPC>	{"fixed":"","composing":"▼幹事","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<RET>	{"fixed":"幹事","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	KaKu	{"fixed":"","composing":"▼書く","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<RET>	{"fixed":"書く","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+# Cancel and backspace
+keys	Kanji<SPC><ESC>	{"fixed":"","composing":"▽かんじ","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<ESC>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	Kanji<BS>	{"fixed":"","composing":"▽かん","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-g>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+# Modes
+keys	qa	{"fixed":"ア","composing":"","cursor":0,"mode":"katakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	q	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-q>a	{"fixed":"ｱ","composing":"","cursor":0,"mode":"jisx0201kana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-j>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	la	{"fixed":"","composing":"","cursor":0,"mode":"ascii","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-j>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	La	{"fixed":"ａ","composing":"","cursor":0,"mode":"jisx0208latin","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-j>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+# User rules
+rules	fj,、,、,､	[{"line":1,"input":"fj","applied":true,"reason":null}]
+keys	fj	{"fixed":"、","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+rules	ka.,…,…,…	[{"line":1,"input":"ka.","applied":false,"reason":"「ka → か」がすぐに確定しなくなるため使えません"}]
+keys	ka	{"fixed":"か","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-g>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+rules	# comment\n\nfj,、,、,､\nlj,x,x,x\nfj,。,。,｡	[{"line":3,"input":"fj","applied":true,"reason":null},{"line":4,"input":"lj","applied":false,"reason":"l は英数モードへの切替キーなので、このルールは入力できません"},{"line":5,"input":"fj","applied":false,"reason":"追加したルール「fj → 、」と入力キーが衝突します"}]
+keys	fj	{"fixed":"、","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+
+# Registration (the user dictionary is in memory)
+keys	Hoge<SPC>	{"fixed":"","composing":"[登録：ほげ]","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	Kanji<SPC><RET>	{"fixed":"","composing":"[登録：ほげ]幹事","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<RET>	{"fixed":"幹事","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	Hoge<SPC>	{"fixed":"","composing":"▼幹事","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<RET>	{"fixed":"幹事","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+# Candidate window: four inline, the fifth Space opens the window
+keys	Kai<SPC><SPC><SPC><SPC>	{"fixed":"","composing":"▼開","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<SPC>	{"fixed":"","composing":"▼改","cursor":0,"mode":"hirakana","candidates":{"visible":true,"items":["改","界","海","階","快","介","壊"],"cursor":0,"page":1,"pageCount":4},"annotation":null}
+keys	<SPC>	{"fixed":"","composing":"▼械","cursor":0,"mode":"hirakana","candidates":{"visible":true,"items":["械","貝","戒","皆","絵","悔","怪"],"cursor":0,"page":2,"pageCount":4},"annotation":null}
+keys	<C-g><C-g>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+# Okuri while composing, and cursor movement
+keys	OkuRi	{"fixed":"","composing":"▼送り","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<RET>	{"fixed":"送り","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	Kanji<LEFT>	{"fixed":"","composing":"▽かんじ","cursor":-1,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+keys	<C-g>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+
+# A fresh session forgets the learning above
+new
+keys	Kanji<SPC>	{"fixed":"","composing":"▼漢字","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}

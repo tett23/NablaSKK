@@ -22,13 +22,17 @@ const MAX_IDLE_COUNT: u32 = 20;
 const MAX_SAVE_INTERVAL: Duration = Duration::from_secs(60 * 5);
 
 /// Writable dictionary keeping the user's learned candidates, ordered by
-/// recency (most recent first). Saved back to disk with throttling.
+/// recency (most recent first). Saved back to disk with throttling, or
+/// kept only in memory ([`LocalUserDictionary::in_memory`]).
 #[derive(Debug)]
 pub struct LocalUserDictionary {
-    path: PathBuf,
+    /// The file the dictionary is saved to; None keeps it in memory.
+    path: Option<PathBuf>,
     encoding: Encoding,
     idle_count: u32,
-    last_save: Instant,
+    /// When it was last saved (or opened). None in memory, which never
+    /// reads the clock: wasm32-unknown-unknown has none (ADR 0023).
+    last_save: Option<Instant>,
     file: DictionaryFile,
     private_mode: bool,
     dirty: bool,
@@ -71,10 +75,10 @@ impl LocalUserDictionary {
         }
 
         let mut dictionary = Self {
-            path: path.as_ref().to_path_buf(),
+            path: Some(path.as_ref().to_path_buf()),
             encoding,
             idle_count: 0,
-            last_save: Instant::now(),
+            last_save: Some(Instant::now()),
             file,
             private_mode: false,
             dirty: false,
@@ -84,12 +88,29 @@ impl LocalUserDictionary {
         dictionary
     }
 
+    /// A user dictionary that touches neither files nor the clock (ADR
+    /// 0023): learning works for the lifetime of the value, and saving,
+    /// reloading and switching private mode do nothing.
+    pub fn in_memory() -> Self {
+        Self {
+            path: None,
+            encoding: Encoding::Utf8,
+            idle_count: 0,
+            last_save: None,
+            file: DictionaryFile::new(),
+            private_mode: false,
+            dirty: false,
+            file_modified: None,
+        }
+    }
+
     /// Pick up edits made to the file by another program (an editor UI).
     /// Returns true when the dictionary was re-read. Unsaved learning
     /// takes precedence: a dirty dictionary is saved instead, overwriting
     /// the external change.
     pub fn reload_if_changed(&mut self) -> bool {
-        if self.private_mode || modified_time(&self.path) == self.file_modified {
+        let Some(path) = self.path.clone() else { return false };
+        if self.private_mode || modified_time(&path) == self.file_modified {
             return false;
         }
 
@@ -99,11 +120,11 @@ impl LocalUserDictionary {
         }
 
         let mut file = DictionaryFile::new();
-        match file.load(&self.path, self.encoding) {
+        match file.load(&path, self.encoding) {
             Ok(()) => {
                 self.file = file;
                 self.fix();
-                self.file_modified = modified_time(&self.path);
+                self.file_modified = modified_time(&path);
                 true
             }
             Err(err) => {
@@ -155,11 +176,12 @@ impl LocalUserDictionary {
 
     /// In private mode changes are neither recorded nor saved.
     pub fn set_private_mode(&mut self, flag: bool) {
+        let Some(path) = self.path.clone() else { return };
         if self.private_mode != flag {
             if flag {
                 self.save(true);
-            } else if self.path.exists() {
-                if let Err(err) = self.file.load(&self.path, self.encoding) {
+            } else if path.exists() {
+                if let Err(err) = self.file.load(&path, self.encoding) {
                     eprintln!("LocalUserDictionary: reload failed: {err}");
                 }
             }
@@ -170,23 +192,25 @@ impl LocalUserDictionary {
 
     /// Persist the dictionary. `force` skips the idle/interval throttle.
     pub fn save(&mut self, force: bool) {
+        let Some(path) = self.path.clone() else { return };
         if self.private_mode || !self.dirty {
             return;
         }
 
         if !force {
             self.idle_count += 1;
-            if self.idle_count < MAX_IDLE_COUNT && self.last_save.elapsed() < MAX_SAVE_INTERVAL {
+            let recent = self.last_save.is_some_and(|time| time.elapsed() < MAX_SAVE_INTERVAL);
+            if self.idle_count < MAX_IDLE_COUNT && recent {
                 return;
             }
         }
 
         self.idle_count = 0;
-        self.last_save = Instant::now();
+        self.last_save = Some(Instant::now());
 
         // Replace the file a symlinked path points at, keeping the link
         // (ADR 0021).
-        let target = resolve_symlinks(&self.path);
+        let target = resolve_symlinks(&path);
         let tmp_path = target.with_extension("tmp");
 
         if let Err(err) = self.file.save(&tmp_path, self.encoding) {
@@ -198,7 +222,7 @@ impl LocalUserDictionary {
             eprintln!("LocalUserDictionary: rename() failed: {err}");
         } else {
             self.dirty = false;
-            self.file_modified = modified_time(&self.path);
+            self.file_modified = modified_time(&path);
         }
     }
 
@@ -320,6 +344,51 @@ mod tests {
         // Most recently registered comes first
         assert_eq!(suite.candidates()[0].word(), "幹事");
         assert_eq!(suite.candidates()[1].word(), "漢字");
+    }
+
+    /// ADR 0023: learning works in memory, without files or a clock.
+    #[test]
+    fn in_memory_register_find_and_remove() {
+        let mut dict = LocalUserDictionary::in_memory();
+
+        dict.register(&Entry::from_entry("かんじ"), &Candidate::new("漢字"));
+        let mut entry = Entry::from_entry("おく");
+        entry.set_okuri("r", "り");
+        dict.register(&entry, &Candidate::new("送"));
+
+        let mut suite = CandidateSuite::new();
+        dict.find(&Entry::from_entry("かんじ"), &mut suite);
+        assert_eq!(suite.candidates()[0].word(), "漢字");
+
+        let mut suite = CandidateSuite::new();
+        dict.find(&entry, &mut suite);
+        assert_eq!(suite.candidates()[0].word(), "送");
+
+        dict.remove(&Entry::from_entry("かんじ"), &Candidate::new("漢字"));
+        let mut suite = CandidateSuite::new();
+        dict.find(&Entry::from_entry("かんじ"), &mut suite);
+        assert!(suite.is_empty());
+    }
+
+    /// ADR 0023: save and reload do nothing and keep what was learned.
+    #[test]
+    fn in_memory_save_and_reload_are_no_ops() {
+        let cwd_before: Vec<_> = std::fs::read_dir(".").unwrap().map(|e| e.unwrap().path()).collect();
+        let mut dict = LocalUserDictionary::in_memory();
+
+        dict.register(&Entry::from_entry("かんじ"), &Candidate::new("漢字"));
+        dict.save(true);
+        assert!(!dict.reload_if_changed());
+        dict.set_private_mode(true);
+        dict.set_private_mode(false);
+
+        let mut suite = CandidateSuite::new();
+        dict.find(&Entry::from_entry("かんじ"), &mut suite);
+        assert_eq!(suite.candidates()[0].word(), "漢字");
+        drop(dict);
+
+        let cwd_after: Vec<_> = std::fs::read_dir(".").unwrap().map(|e| e.unwrap().path()).collect();
+        assert_eq!(cwd_before, cwd_after, "no file was created");
     }
 
     #[test]
