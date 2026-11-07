@@ -64,6 +64,11 @@ pub struct ConversionResult {
     pub intermediate: String,
 }
 
+/// Output of a rule whose output field is `&abbrev;`: a request to enter
+/// abbrev mode, carried through the conversion as one private-use
+/// character (ADR 0026). Never shown or inserted.
+pub const ENTER_ABBREV: char = '\u{F8FE}';
+
 /// Rule tree loaded from kana-rule.conf (port of `SKKRomanKanaConverter`).
 #[derive(Debug, Clone, Default)]
 pub struct RomanKanaConverter {
@@ -118,9 +123,9 @@ impl RomanKanaConverter {
 
             if let [roman, hirakana, katakana, jisx0201kana, rest @ ..] = fields.as_slice() {
                 let rule = Rule {
-                    hirakana: hirakana.clone(),
-                    katakana: katakana.clone(),
-                    jisx0201kana: jisx0201kana.clone(),
+                    hirakana: kana_output(hirakana),
+                    katakana: kana_output(katakana),
+                    jisx0201kana: kana_output(jisx0201kana),
                     next: rest.first().cloned().unwrap_or_default(),
                 };
                 self.root.add(roman.as_bytes(), rule);
@@ -157,7 +162,11 @@ impl RomanKanaConverter {
                 Step::Short { intermediate } => {
                     converted = false;
                     if let Some(rule) = intermediate {
-                        result.intermediate = rule.kana(mode).to_string();
+                        // The abbrev request is not text to show (ADR 0026)
+                        let kana = rule.kana(mode);
+                        if !kana.contains(ENTER_ABBREV) {
+                            result.intermediate = kana.to_string();
+                        }
                     }
                     result.next = String::from_utf8_lossy(&queue).into_owned();
                     break;
@@ -200,6 +209,16 @@ impl RomanKanaConverter {
     }
 }
 
+/// An output field: `&abbrev;` as the whole field is the abbrev request
+/// (ADR 0026); anything else is text.
+fn kana_output(field: &str) -> String {
+    if field == "&abbrev;" {
+        ENTER_ABBREV.to_string()
+    } else {
+        field.to_string()
+    }
+}
+
 fn unescape(field: &str) -> String {
     field
         .replace("&comma;", ",")
@@ -216,6 +235,35 @@ mod tests {
         let mut conv = RomanKanaConverter::new();
         conv.load(include_str!("../../../data/kana-rule.utf8.conf"));
         conv
+    }
+
+    // ADR 0026: a whole output field of &abbrev; is the abbrev request
+    #[test]
+    fn abbrev_output() {
+        let mut conv = converter();
+        conv.load("jl,&abbrev;,&abbrev;,&abbrev;\njm,あ&abbrev;,ア&abbrev;,ｱ&abbrev;\njlx,ぁ,ァ,ｧ\n");
+        for mode in [Hirakana, Katakana, Jisx0201Kana] {
+            let (result, _) = conv.convert(mode, "jm");
+            assert!(!result.output.contains(ENTER_ABBREV));
+            assert!(result.output.ends_with("&abbrev;"));
+        }
+        let (result, _) = conv.convert(Hirakana, "jlz");
+        assert!(result.output.starts_with(ENTER_ABBREV));
+        // A rule that is also a prefix: its intermediate is never shown
+        let (result, _) = conv.convert(Hirakana, "jl");
+        assert_eq!(result.output, "");
+        assert_eq!(result.intermediate, "");
+    }
+
+    #[test]
+    fn abbrev_output_in_every_kana_mode() {
+        let mut conv = converter();
+        conv.load("jl,&abbrev;,&abbrev;,&abbrev;\n");
+        for mode in [Hirakana, Katakana, Jisx0201Kana] {
+            let (result, converted) = conv.convert(mode, "jl");
+            assert!(converted);
+            assert_eq!(result.output, ENTER_ABBREV.to_string());
+        }
     }
 
     #[test]
