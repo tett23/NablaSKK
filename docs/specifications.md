@@ -260,6 +260,16 @@ C ABI。正は `crates/nablaskk-ffi/include/nablaskk.h`、Swift ラッパーは
   (このバージョンの macOS でのアクセシビリティの許可の画面)に NablaSKK が出なかったこと。
   キーイベントを送るには、この許可を与える手順(ad-hoc 署名のため差し替えのたびに
   与え直す見込み)が要る。実装は main に入れていない。
+- [ADR 0024](adr/0024-ascii-input-source.md)(英数の入力ソースを足して、ほかの IME を外せるようにする):
+  ブランチで実装し(`Info.plist` の `ComponentInputModeDict` に、統合の
+  `com.apple.inputmethod.Japanese` と英数の `com.apple.inputmethod.Roman` の 2 つの入力モードを
+  登録)、作業者が実機で試した。TIS は 2 つのモードを「有効」「選択可能」と返し、英数は ASCII を
+  入力できる入力ソースとして扱われていた。システム設定の入力ソースの一覧にも NablaSKK は出た。
+  しかし、メニューバーの入力メニューには統合も英数も出ず、NablaSKK を使えなくなった。入力ソースを
+  外して足し直しても直らなかった。`Info.plist` を本家 AquaSKK に合わせても(最上位の
+  `TISInputSourceID` を外す、`tsInputMethodCharacterRepertoireKey` を `Hira` `Kana` `Latn` に
+  する、統合の `tsInputModeDefaultStateKey` を false にする、`InputMethodServerDelegateClass` を
+  足す)直らなかった。原因は分かっていない。作業者が破棄すると決めた。実装は main に入れていない。
 
 ## 12. wasm(nablaskk-wasm)
 
