@@ -21,6 +21,9 @@ SKK には `z.` で `…`、`z/` で `・` を入力するような、組み込�
 - 保存先は `~/Library/Application Support/NablaSKK/kana-rule.conf` で、本家の
   kana-rule.conf と同じ書式(1 行に `入力,ひらがな,カタカナ,半角カナ`)です。
   たとえば `fj,、,、,､` と書けます。
+- 出力を `&abbrev;` だけにすると、そのキーで abbrev モードに入ります(`/` と同じ。本家に無い
+  NablaSKK 独自の書き方です)。たとえば `jl,&abbrev;,&abbrev;,&abbrev;` で、`/` が遠くても
+  `jl` で abbrev に入れます。
 
 ## インストール
 

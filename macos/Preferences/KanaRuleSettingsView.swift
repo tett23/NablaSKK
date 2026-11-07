@@ -102,7 +102,8 @@ struct KanaRuleSettingsView: View {
             Text("かなモードで入力キーを続けて打つと、出力の文字になります(組み込みの「z.」→「…」と同じ仕組みです)。"
                  + "例えば入力キーを「fj」、出力を「、」にすると、fj で読点を打てます。"
                  + "カタカナ・半角カナモードでは出力をカタカナ・半角に変えて使います。"
-                 + "出力の「、」「。」は、「入力」ページの句読点の設定が全角なら「，」「．」で入ります。")
+                 + "出力の「、」「。」は、「入力」ページの句読点の設定が全角なら「，」「．」で入ります。"
+                 + "出力を「&abbrev;」だけにすると、その入力キーで abbrev モードに入ります(/ と同じです)。")
                 .font(.callout)
                 .foregroundColor(.prefSecondary)
                 .fixedSize(horizontal: false, vertical: true)

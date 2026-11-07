@@ -47,7 +47,12 @@ struct KanaRule: Identifiable, Equatable {
         case tooLong
         /// The first key switches modes before the rule can match.
         case modeKey(Character)
+        /// `&abbrev;` mixed with other text in the output (ADR 0026).
+        case abbrevNotAlone
     }
+
+    /// The output that enters abbrev mode instead of typing text (ADR 0026).
+    static let abbrevOutput = "&abbrev;"
 
     static let maxInputLength = 8
     /// Keys the engine treats as mode switches in kana mode when they do
@@ -65,6 +70,7 @@ struct KanaRule: Identifiable, Equatable {
         if bytes.count > Self.maxInputLength { return .tooLong }
         if let first = input.first, Self.modeKeys[first] != nil { return .modeKey(first) }
         if output.contains(where: { $0.isNewline }) { return .invalidCharacters }
+        if output.contains(Self.abbrevOutput) && output != Self.abbrevOutput { return .abbrevNotAlone }
         return nil
     }
 
@@ -77,6 +83,7 @@ struct KanaRule: Identifiable, Equatable {
         case .uppercase: return "大文字は▽変換の開始になるので使えません"
         case .tooLong: return "入力キーは \(Self.maxInputLength) 文字までです"
         case .modeKey(let key): return "\(key) は\(Self.modeKeys[key] ?? "モード切替")キーなので、このルールは入力できません"
+        case .abbrevNotAlone: return "\(Self.abbrevOutput) は出力にそれだけを書いてください"
         }
     }
 

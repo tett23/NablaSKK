@@ -551,3 +551,86 @@ fn semicolon_without_sticky_key_types_a_full_width_semicolon() {
     h.type_str(";");
     assert_eq!(h.fixed(), "；");
 }
+
+// ADR 0026: a rule whose output is &abbrev; enters abbrev mode, as the
+// EnterAbbrev key (/) does.
+
+fn abbrev_harness() -> Harness {
+    let mut h = sticky_harness("");
+    h.session.converter_mut().load("jl,&abbrev;,&abbrev;,&abbrev;\n");
+    h
+}
+
+/// (composing, fixed) after typing keys; compared between the rule and `/`.
+fn typed(keys: &str) -> (String, String) {
+    let mut h = abbrev_harness();
+    h.type_str(keys);
+    (h.composing(), h.fixed())
+}
+
+#[test]
+fn abbrev_rule_enters_abbrev_mode() {
+    assert_eq!(typed("jl"), typed("/"));
+    assert_eq!(typed("jlnet"), typed("/net"));
+    assert_eq!(typed("jlnet"), ("▽net".to_string(), String::new()));
+}
+
+#[test]
+fn abbrev_rule_halfway_shows_the_romaji() {
+    let mut h = abbrev_harness();
+    h.type_str("j");
+    assert_eq!(h.composing(), "j");
+    assert_eq!(h.fixed(), "");
+}
+
+#[test]
+fn abbrev_rule_in_katakana_and_half_width_kana() {
+    assert_eq!(typed("qjlnet"), typed("q/net"));
+    let mut h = abbrev_harness();
+    h.press_ctrl(b'q');
+    h.type_str("jlnet");
+    assert_eq!(h.composing(), "▽net");
+}
+
+#[test]
+fn abbrev_rule_does_nothing_in_a_reading() {
+    let mut h = abbrev_harness();
+    h.type_str("Ka");
+    h.type_str("jl");
+    assert_eq!(h.composing(), "▽か");
+    assert_eq!(h.fixed(), "");
+    h.type_str("nji");
+    assert_eq!(h.composing(), "▽かんじ");
+}
+
+#[test]
+fn abbrev_rule_after_a_conversion_commits_it_first() {
+    assert_eq!(typed("Kanji jlnet"), typed("Kanji /net"));
+    assert_eq!(typed("Kanji jlnet").1, "漢字");
+}
+
+#[test]
+fn abbrev_rule_in_registration() {
+    assert_eq!(typed("Mikan jlnet"), typed("Mikan /net"));
+    assert!(typed("Mikan jlnet").0.starts_with("[登録：みかん]"));
+}
+
+#[test]
+fn abbrev_rule_is_plain_text_in_ascii_mode() {
+    let mut h = abbrev_harness();
+    h.type_str("ljl");
+    assert_eq!(h.fixed(), "");
+    assert_eq!(h.session.input_mode(), InputMode::Ascii);
+}
+
+#[test]
+fn abbrev_request_does_not_linger() {
+    // A request in a reading is dropped; it must not fire on a later key
+    let mut h = abbrev_harness();
+    h.type_str("Kajl");
+    h.press_enter();
+    assert_eq!(h.fixed(), "か");
+    h.type_str("a");
+    assert_eq!(h.fixed(), "かあ");
+    assert_eq!(h.composing(), "");
+}

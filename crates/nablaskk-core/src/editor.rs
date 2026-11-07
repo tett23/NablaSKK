@@ -20,7 +20,7 @@ use crate::context::{InputContext, RegistrationState};
 use crate::entry::Entry;
 use crate::input_mode::InputMode;
 use crate::jconv;
-use crate::trie::RomanKanaConverter;
+use crate::trie::{RomanKanaConverter, ENTER_ABBREV};
 
 // ======================================================================
 // Text buffer with cursor support (port of SKKTextBuffer)
@@ -623,6 +623,9 @@ pub struct InputEngine {
     input_queue: InputQueue,
     input_state: QueueState,
     word: String,
+    /// A rule asked to enter abbrev mode (ADR 0026); set by the key being
+    /// handled and taken by the state that can act on it.
+    abbrev_requested: bool,
 
     bottom: BottomEditor,
     composing: ComposingEditor,
@@ -640,6 +643,7 @@ impl InputEngine {
             input_queue: InputQueue::default(),
             input_state: QueueState::default(),
             word: String::new(),
+            abbrev_requested: false,
             bottom,
             composing: ComposingEditor::default(),
             okuri: OkuriEditor::default(),
@@ -742,6 +746,8 @@ impl InputEngine {
     // ------------------------------------------------------------
 
     pub fn handle_char(&mut self, ctx: &mut InputContext, deps: &mut EngineDeps, code: u8, direct: bool) {
+        // Only the key that completed the rule may act on its request
+        self.abbrev_requested = false;
         let state = self.input_queue.add_char(deps.converter, code, direct);
         self.route(ctx, state);
     }
@@ -861,6 +867,12 @@ impl InputEngine {
         }
     }
 
+    /// True when the key just handled completed an `&abbrev;` rule
+    /// (ADR 0026). Clears the request.
+    pub fn take_abbrev_request(&mut self) -> bool {
+        std::mem::take(&mut self.abbrev_requested)
+    }
+
     pub fn can_convert(&self, converter: &RomanKanaConverter, code: u8) -> bool {
         self.input_queue.can_convert(converter, code)
     }
@@ -944,7 +956,12 @@ impl InputEngine {
 
     /// Port of `SKKInputQueueUpdate`: route conversion output to the
     /// top editor.
-    fn route(&mut self, ctx: &mut InputContext, state: QueueState) {
+    fn route(&mut self, ctx: &mut InputContext, mut state: QueueState) {
+        // The abbrev request is not text: note it and drop it (ADR 0026)
+        if state.fixed.contains(ENTER_ABBREV) {
+            state.fixed.retain(|c| c != ENTER_ABBREV);
+            self.abbrev_requested = true;
+        }
         self.input_state = state.clone();
         let top = *self.stack.last().unwrap();
 

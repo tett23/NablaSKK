@@ -294,6 +294,10 @@ impl States<'_> {
 
             if event.is_input_chars() {
                 self.handle_char(event.code, event.is_direct());
+                // A rule whose output is &abbrev; acts as EnterAbbrev (ADR 0026)
+                if self.engine.take_abbrev_request() {
+                    return Transition(AsciiEntry);
+                }
                 return Handled;
             }
         }

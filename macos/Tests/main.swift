@@ -417,6 +417,13 @@ do {
     check(KanaRule(input: "ふ", output: "、").problem == .invalidCharacters, "kana rule: non-ASCII rejected")
     check(KanaRule(input: "abcdefghi", output: "x").problem == .tooLong, "kana rule: too long")
     check(KanaRule(input: "lj", output: "x").problem == .modeKey("l"), "kana rule: l-prefixed rule is unreachable")
+    // ADR 0026: &abbrev; only as the whole output
+    check(KanaRule(input: "jl", output: "&abbrev;").problem == nil, "kana rule: &abbrev; output is valid")
+    for mixed in ["あ&abbrev;", "&abbrev;あ"] {
+        check(KanaRule(input: "jl", output: mixed).problemMessage == "&abbrev; は出力にそれだけを書いてください",
+              "kana rule: \(mixed) is rejected")
+    }
+    check(KanaRule(input: "jl", output: "&abbrev;").line == "jl,&abbrev;,&abbrev;,&abbrev;", "kana rule: &abbrev; line")
     check(KanaRule(input: "です", output: "x").problem != nil, "kana rule: kana input rejected")
 
     let desu = KanaRule(input: "ds", output: "です")

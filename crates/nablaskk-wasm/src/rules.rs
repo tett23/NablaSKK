@@ -64,6 +64,9 @@ pub fn builtin_rules(text: &str) -> Vec<Rule> {
 }
 
 /// Why a rule cannot be typed at all, or None (KanaRule.problemMessage).
+/// The output that enters abbrev mode (ADR 0026).
+const ABBREV: &str = "&abbrev;";
+
 pub fn problem(input: &str, output: &str) -> Option<String> {
     let bytes = input.as_bytes();
     let message = if input.is_empty() {
@@ -80,6 +83,8 @@ pub fn problem(input: &str, output: &str) -> Option<String> {
         format!("{key} は{name}キーなので、このルールは入力できません")
     } else if output.contains(['\n', '\r']) {
         "入力キーは空白を含まない半角英数記号にしてください".to_string()
+    } else if output.contains(ABBREV) && output != ABBREV {
+        "&abbrev; は出力にそれだけを書いてください".to_string()
     } else {
         return None;
     };
@@ -197,6 +202,10 @@ mod tests {
         assert_eq!(problem("lj", "x").as_deref(), Some("l は英数モードへの切替キーなので、このルールは入力できません"));
         assert_eq!(problem("qj", "x").as_deref(), Some("q はひらがな/カタカナ切替キーなので、このルールは入力できません"));
         assert_eq!(problem("/j", "x").as_deref(), Some("/ はabbrev モードへの切替キーなので、このルールは入力できません"));
+        // ADR 0026
+        assert_eq!(problem("jl", "&abbrev;"), None);
+        assert_eq!(problem("jl", "あ&abbrev;").as_deref(), Some("&abbrev; は出力にそれだけを書いてください"));
+        assert_eq!(problem("jl", "&abbrev;あ").as_deref(), Some("&abbrev; は出力にそれだけを書いてください"));
     }
 
     #[test]

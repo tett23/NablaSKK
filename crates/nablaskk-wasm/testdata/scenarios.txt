@@ -76,3 +76,11 @@ keys	<C-g>	{"fixed":"","composing":"","cursor":0,"mode":"hirakana","candidates":
 # A fresh session forgets the learning above
 new
 keys	Kanji<SPC>	{"fixed":"","composing":"▼漢字","cursor":0,"mode":"hirakana","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+
+# A rule whose output is &abbrev; enters abbrev mode as / does (ADR 0026)
+new
+keys	/net	{"fixed":"","composing":"▽net","cursor":0,"mode":"ascii","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+new
+rules	jl,&abbrev;,&abbrev;,&abbrev;	[{"line":1,"input":"jl","applied":true,"reason":null}]
+keys	jlnet	{"fixed":"","composing":"▽net","cursor":0,"mode":"ascii","candidates":{"visible":false,"items":[],"cursor":0,"page":0,"pageCount":0},"annotation":null}
+rules	jl,あ&abbrev;,あ&abbrev;,あ&abbrev;	[{"line":1,"input":"jl","applied":false,"reason":"&abbrev; は出力にそれだけを書いてください"}]

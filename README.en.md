@@ -28,6 +28,9 @@ reach, you can make `fj` type `、`.
 - They are saved in `~/Library/Application Support/NablaSKK/kana-rule.conf`, in the same format
   as AquaSKK's kana-rule.conf (one rule per line: `input,hiragana,katakana,half-width katakana`).
   For example: `fj,、,、,､`.
+- An output of just `&abbrev;` enters abbrev mode, as `/` does (NablaSKK's own notation, not in
+  AquaSKK). For example, `jl,&abbrev;,&abbrev;,&abbrev;` lets `jl` enter abbrev mode when `/` is
+  far away.
 
 ## Installation
 
