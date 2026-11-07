@@ -350,6 +350,19 @@ do {
                                 subRuleDirectory: URL(fileURLWithPath: "data", isDirectory: true))
         return s
     }
+    // ADR 0025: StickyKey, no default key, written to and read from the file
+    let sticky = KeymapSettings.actions.first { $0.symbol == "StickyKey" }
+    check(sticky?.label == "sticky shift (▽・送り仮名の開始)" && sticky?.defaultKeys == "",
+          "keymap: StickyKey is offered with no default key")
+    if let sticky {
+        var stickySettings = KeymapSettings.parse("")
+        stickySettings.set(";", for: sticky)
+        check(stickySettings.overrideText == "StickyKey\t;", "keymap: StickyKey ; is written to the file")
+        stickySettings.set("", for: sticky)
+        check(stickySettings.overrideText == "", "keymap: clearing StickyKey removes its line")
+        check(KeymapSettings.parse("StickyKey\t;\n").keys(for: sticky) == ";", "keymap: StickyKey is read from the file")
+    }
+
     let idle = idleSession()
     check(idle.handle(charcode: 0, keycode: 0x50) && idle.inputMode == .ascii, "keymap: F19 switches to ASCII when idle")
     let busy = idleSession()

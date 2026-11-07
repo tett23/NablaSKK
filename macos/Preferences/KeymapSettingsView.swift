@@ -32,7 +32,9 @@ struct KeymapSettingsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("キーは keymap.conf の書き方で指定します。修飾キーは ctrl:: / shift:: / alt:: / meta::、"
                  + "文字コードは hex::0x1b、キーコードは keycode::7b、複数のキーは || で区切ります。"
-                 + "空にするとデフォルトに戻ります。")
+                 + "空にするとデフォルトに戻ります。"
+                 + "sticky shift のキーはローマ字かなルールより先に効きます"
+                 + "(例: ; を割り当てると、; → ； は ; を 2 回押して入れます)。")
                 .font(.callout)
                 .foregroundColor(.prefSecondary)
 

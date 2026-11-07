@@ -62,7 +62,7 @@ try! "".write(toFile: disabledDictionary, atomically: true, encoding: .utf8)
 // The missing one first: the row under the present one (gadget) has no error
 try! "0 \(missingDictionary)\n0 \(presentDictionary)\n4\n- 0 \(disabledDictionary)\n"
     .write(to: DictionaryConfig.fileURL, atomically: true, encoding: .utf8)
-try! "SKK_JMODE bad spec\nSKK_CANCEL ctrl::g\n".write(to: KeymapSettings.fileURL, atomically: true, encoding: .utf8)
+try! "SKK_JMODE bad spec\nSKK_CANCEL ctrl::g\nStickyKey ;\n".write(to: KeymapSettings.fileURL, atomically: true, encoding: .utf8)
 try! "jb,★,★,★\n".write(to: KanaRuleSettings.fileURL, atomically: true, encoding: .utf8)
 try! ";; okuri-ari entries.\n;; okuri-nasi entries.\nてすと /試験/\n"
     .write(to: support.appendingPathComponent("skk-jisyo"), atomically: true, encoding: .utf8)
@@ -316,6 +316,16 @@ if let overridden = field("ctrl::g") {
 } else {
     check(false, "keys: the valid override is shown")
 }
+// The sticky shift row is below the first screen: scroll the list down (ADR 0025)
+func scrollViews(in view: NSView) -> [NSScrollView] {
+    ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(scrollViews(in:))
+}
+for scroll in scrollViews(in: host) {
+    if let document = scroll.documentView {
+        document.scroll(NSPoint(x: 0, y: document.isFlipped ? document.bounds.maxY : 0))
+    }
+}
+checkEventually({ field(";") != nil }, "keys: the sticky shift row is shown with its key")
 
 // MARK: - Romaji rule page (ADR 0006)
 
