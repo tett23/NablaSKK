@@ -103,6 +103,9 @@ the default). One action is NablaSKK's own: "英数モードへ (入力中は何
 (`SwitchToAsciiIfIdle`, ASCII mode unless composing) does nothing while you are composing and
 switches to ASCII mode otherwise (no default key). It suits a key sent right after Esc, for
 example by Karabiner.
+Sticky shift (`StickyKey`) can be assigned on the same page too (no default key). The key you
+assign (for example `;`) starts a reading or okurigana; pressing it twice types the key itself.
+It takes precedence over the romaji-to-kana rules.
 
 skkserv can be set up on the "skkserv" page of the preferences app: host, port and encoding
 (EUC-JP / UTF-8), saved in `settings.conf`. The server is asked after all local dictionaries

@@ -55,6 +55,8 @@ struct KeymapSettings: Equatable {
         KeymapAction(symbol: "SwitchToJisx0208Latin", label: "全角英数モードへ", defaultKeys: "L"),
         KeymapAction(symbol: "EnterAbbrev", label: "abbrev モードへ", defaultKeys: "/"),
         KeymapAction(symbol: "EnterJapanese", label: "日本語入力開始 (Q)", defaultKeys: "Q"),
+        // No default key, as in AquaSKK (ADR 0025)
+        KeymapAction(symbol: "StickyKey", label: "sticky shift (▽・送り仮名の開始)", defaultKeys: ""),
         KeymapAction(symbol: "NextCompletion", label: "次の補完候補", defaultKeys: "."),
         KeymapAction(symbol: "PrevCompletion", label: "前の補完候補", defaultKeys: ","),
         KeymapAction(symbol: "NextCandidate", label: "次の変換候補", defaultKeys: "hex::0x20||ctrl::n"),

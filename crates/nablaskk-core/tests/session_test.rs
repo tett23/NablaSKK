@@ -511,3 +511,43 @@ fn switch_to_ascii_still_commits_the_reading() {
     assert_eq!(h.fixed(), "かんじ");
     assert_eq!(h.session.input_mode(), InputMode::Ascii);
 }
+
+// ADR 0025: StickyKey assigned from the preferences app is laid over the
+// shipped keymap, as the input method does.
+
+fn sticky_harness(user_keymap: &str) -> Harness {
+    let mut h = Harness::new();
+    h.keymap = Keymap::new();
+    h.keymap.load(include_str!("../../../data/keymap.conf"));
+    h.keymap.load(user_keymap);
+    h
+}
+
+#[test]
+fn sticky_key_over_shipped_keymap_starts_a_reading_and_okuri() {
+    let mut h = sticky_harness("StickyKey\t;\n");
+    h.type_str(";kanji");
+    assert_eq!(h.composing(), "▽かんじ");
+    h.type_str(" ");
+    assert_eq!(h.composing(), "▼漢字");
+    h.press_ctrl(b'm');
+    assert_eq!(h.fixed(), "漢字");
+
+    h.type_str(";oku;ri");
+    assert_eq!(h.composing(), "▼送り");
+}
+
+#[test]
+fn sticky_key_twice_types_the_key() {
+    let mut h = sticky_harness("StickyKey\t;\n");
+    h.type_str(";;");
+    assert_eq!(h.fixed(), "；");
+    assert_eq!(h.composing(), "");
+}
+
+#[test]
+fn semicolon_without_sticky_key_types_a_full_width_semicolon() {
+    let mut h = sticky_harness("");
+    h.type_str(";");
+    assert_eq!(h.fixed(), "；");
+}
