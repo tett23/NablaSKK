@@ -158,10 +158,38 @@ jobs:
           path: dist/*
 
   # ==================================================================
+  # WebAssembly build for the web demo (ADR 0023)
+  # ==================================================================
+  build-wasm:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Swatinem/rust-cache@v2
+      - name: Add the wasm target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build nablaskk.wasm
+        run: cargo build --release -p nablaskk-wasm --target wasm32-unknown-unknown
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Test the wasm under Deno
+        run: deno test --allow-read --allow-env crates/nablaskk-wasm/deno/wasm_test.ts
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp target/wasm32-unknown-unknown/release/nablaskk_wasm.wasm dist/nablaskk.wasm
+          cp data/SKK-JISYO.S dist/SKK-JISYO.S
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nablaskk-wasm
+          path: dist/*
+
+  # ==================================================================
   # Release (tags v*)
   # ==================================================================
   release:
-    needs: [build-linux, build-macos]
+    needs: [build-linux, build-macos, build-wasm]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

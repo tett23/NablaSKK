@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nablaskk-core", "crates/skkserv", "crates/skk-cli", "crates/nablaskk-ffi"]
+members = ["crates/nablaskk-core", "crates/skkserv", "crates/skk-cli", "crates/nablaskk-ffi", "crates/nablaskk-wasm"]
 
 [workspace.package]
 version = "1.2.4"

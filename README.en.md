@@ -188,9 +188,10 @@ From Rust, depend on `nablaskk-core` by path. From Swift / Objective-C, link `na
 crates/
   nablaskk-core/   the engine (library)
   nablaskk-ffi/    C ABI (for Swift / Objective-C hosts)
+  nablaskk-wasm/   wasm for trying the engine in a browser (C ABI, no imports)
   skkserv/        SKK dictionary server (binary)
   skk-cli/        demo for trying SKK input in a terminal
-data/             kana rules and keymaps (from AquaSKK)
+data/             kana rules and keymaps (from AquaSKK), SKK-JISYO.S shipped with the wasm
 swift/            Swift wrapper and smoke test
 macos/            macOS input method and the preferences app (SwiftUI)
 upstream-patches/ patches for AquaSKK's C++ code
@@ -262,16 +263,34 @@ A macOS InputMethodKit controller can embed it by bridging the return value of
 `handle(charcode:keycode:mods:)` and `takeFixed()` / `composing` to `insertText` /
 `setMarkedText`.
 
+### nablaskk-wasm
+
+A wasm build of the engine for browsers (and Deno)
+([ADR 0023](docs/adr/0023-wasm-engine-for-web-demo.md)). It is a C ABI without wasm-bindgen and
+imports nothing (load it with `WebAssembly.instantiate(bytes, {})`). The user dictionary lives
+in memory only. The exported functions and data formats are in
+[section 12 of the specification](docs/specifications.md) (Japanese).
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo build --release -p nablaskk-wasm --target wasm32-unknown-unknown
+deno test --allow-read --allow-env crates/nablaskk-wasm/deno/wasm_test.ts
+```
+
 ## CI / releases
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the tests (including the 400 acceptance cases),
-clippy and the Swift smoke test on every push and pull request, and builds these artifacts:
+clippy, the Swift smoke test and the Deno tests of the wasm on every push and pull request, and builds these artifacts:
 
 - `NablaSKK-macos-universal.app.zip`: the input method (arm64 + x86_64)
 - `nablaskk-tools-macos-universal.tar.gz` / `nablaskk-tools-linux-x86_64.tar.gz`: skkserv and
   skk-cli
 - `nablaskk-ffi-macos-universal.tar.gz`: libnablaskk_ffi.a + nablaskk.h + SKKSession.swift (for
   embedding in Swift)
+- `nablaskk.wasm`: the engine for trying NablaSKK in a browser
+- `SKK-JISYO.S`: a small dictionary to use with `nablaskk.wasm` (from skk-dev/dict, still EUC-JP)
+
+The file names stay the same across versions.
 
 Pushing a `v*` tag creates a draft release with these attached. A tag containing `-` (such as
 `v1.1.0-rc`) becomes a prerelease:

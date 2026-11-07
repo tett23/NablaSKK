@@ -181,9 +181,10 @@ Rust からは `nablaskk-core` をパス依存で、Swift / Objective-C から�
 crates/
   nablaskk-core/   エンジン本体(ライブラリ)
   nablaskk-ffi/    C ABI(Swift / Objective-C ホスト向け)
+  nablaskk-wasm/   ブラウザで試すための wasm(C ABI、import なし)
   skkserv/        SKK 辞書サーバー(バイナリ)
   skk-cli/        ターミナルで SKK 入力を試せるデモ
-data/             かな変換ルール・キーマップ(本家由来)
+data/             かな変換ルール・キーマップ(本家由来)、wasm に添付する SKK-JISYO.S
 swift/            Swift ラッパーとスモークテスト
 macos/            macOS 入力メソッド本体と辞書設定アプリ(SwiftUI)
 upstream-patches/ 本家 C++ 側の修正パッチ
@@ -258,10 +259,23 @@ macOS の InputMethodKit コントローラからは `handle(charcode:keycode:mo
 の戻り値と `takeFixed()` / `composing` を `insertText` / `setMarkedText`
 に橋渡しする形で組み込めます。
 
+### nablaskk-wasm
+
+ブラウザ(と Deno)でエンジンを動かすための wasm です([ADR 0023](docs/adr/0023-wasm-engine-for-web-demo.md))。
+wasm-bindgen を使わない C ABI で、import はありません(`WebAssembly.instantiate(bytes, {})`
+で読みこめます)。ユーザー辞書はメモリの上だけに置きます。エクスポートする関数と受け渡しの形は
+[仕様の 12 節](docs/specifications.md)にあります。
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo build --release -p nablaskk-wasm --target wasm32-unknown-unknown
+deno test --allow-read --allow-env crates/nablaskk-wasm/deno/wasm_test.ts
+```
+
 ## CI / リリース
 
 GitHub Actions(`.github/workflows/ci.yml`)が push / PR ごとに
-テスト(受け入れ400ケース含む)・clippy・Swiftスモークテストを実行し、
+テスト(受け入れ400ケース含む)・clippy・Swiftスモークテストと、wasm の Deno のテストを実行し、
 ビルド済みアーティファクトを生成します:
 
 - `NablaSKK-macos-universal.app.zip` — 入力メソッド本体(arm64 + x86_64)
@@ -269,6 +283,10 @@ GitHub Actions(`.github/workflows/ci.yml`)が push / PR ごとに
   — skkserv と skk-cli
 - `nablaskk-ffi-macos-universal.tar.gz` — libnablaskk_ffi.a + nablaskk.h +
   SKKSession.swift(Swift 組み込み用)
+- `nablaskk.wasm` — ブラウザで試すためのエンジン
+- `SKK-JISYO.S` — `nablaskk.wasm` と使う小さい辞書(skk-dev/dict のもの、EUC-JP のまま)
+
+添付するファイルの名前は版をまたいで変えません。
 
 `v*` タグを push すると、これらを添付したドラフトリリースが作成されます。
 タグ名に `-` を含む場合(`v1.1.0-rc` など)はプレリリースになります:

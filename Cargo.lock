@@ -14,6 +14,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nablaskk-wasm"
+version = "1.2.4"
+dependencies = [
+ "nablaskk-core",
+]
+
+[[package]]
 name = "skk-cli"
 version = "1.2.4"
 dependencies = [
