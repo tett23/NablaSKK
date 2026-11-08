@@ -51,6 +51,24 @@ enum EngineSetup {
         }
     }
 
+    /// Engine options from settings.conf (suggest, annotation, and the
+    /// AquaSKK options of ADR 0027).
+    static func applyOptions(to session: SKKSession, settings: InputSettings) {
+        func flag(_ on: Bool) -> Int32 { on ? 1 : 0 }
+        session.setOption(.enableDynamicCompletion, flag(settings.suggestEnabled))
+        session.setOption(.dynamicCompletionRange, Int32(settings.suggestCount))
+        session.setOption(.enableExtendedCompletion, flag(settings.completionExtended))
+        session.setOption(.enableAnnotation, flag(settings.annotationEnabled))
+        session.setOption(.suppressNewlineOnCommit, flag(settings.suppressNewlineOnCommit))
+        session.setOption(.inlineBackspaceImpliesCommit, flag(settings.inlineBackspaceImpliesCommit))
+        session.setOption(.deleteOkuriWhenQuit, flag(settings.deleteOkuriWhenQuit))
+        session.setOption(.handleRecursiveEntryAsOkuri, flag(settings.handleRecursiveEntryAsOkuri))
+        session.setOption(.displayShortestMatch, flag(settings.displayShortestMatch))
+        session.setOption(.useNumericConversion, flag(settings.useNumericConversion))
+        session.setOption(.maxInlineCandidates, Int32(settings.maxInlineCandidates))
+        session.setOption(.minimumCompletionLength, Int32(settings.minimumCompletionLength))
+    }
+
     /// Built-in keymap, then the input style's keymap patch (merged, as
     /// AquaSKK does), then the user's keymap.conf overrides.
     static func applyKeymap(to session: SKKSession, settings: InputSettings, keymap: KeymapSettings,

@@ -135,7 +135,8 @@ enum {
     SKK_OPTION_ENABLE_DYNAMIC_COMPLETION = 8,
     SKK_OPTION_DYNAMIC_COMPLETION_RANGE = 9,
     SKK_OPTION_ENABLE_EXTENDED_COMPLETION = 10, /* complete from all dictionaries */
-    SKK_OPTION_ENABLE_ANNOTATION = 11           /* report candidate annotations */
+    SKK_OPTION_ENABLE_ANNOTATION = 11,          /* report candidate annotations */
+    SKK_OPTION_MINIMUM_COMPLETION_LENGTH = 12   /* drop completions this short or shorter */
 };
 
 /* Set an engine option. Returns 0 on success. */

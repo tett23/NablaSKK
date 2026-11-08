@@ -71,8 +71,22 @@ struct InputSettingsView: View {
                             .font(.subheadline).foregroundColor(.prefSecondary)
                     }
                 }
+                Stepper(value: $store.settings.minimumCompletionLength, in: InputSettings.minimumCompletionLengthRange) {
+                    HStack {
+                        Text("外す見出し語")
+                        Text(store.settings.minimumCompletionLength == 0 ? "なし" : "\(store.settings.minimumCompletionLength) 文字以下")
+                            .monospacedDigit()
+                            .frame(minWidth: 56, alignment: .trailing)
+                    }
+                }
             } header: {
                 Text("サジェスト").font(.headline)
+            } footer: {
+                Text("外す見出し語: 読みがこの文字数より短いとき、この文字数以下の見出し語を補完の候補から外します(TAB 補完にも効きます)。")
+                    .font(.subheadline)
+                    .foregroundColor(.prefSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 480, alignment: .leading)
             }
 
             Section {
@@ -100,6 +114,78 @@ struct InputSettingsView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+/// Engine options from AquaSKK's preferences (ADR 0027): commit and
+/// cancel, okuri, candidates and romaji display.
+struct ConversionSettingsView: View {
+    @StateObject private var store = InputSettingsStore()
+
+    var body: some View {
+        Form {
+            Section {
+                option("Enter で確定したとき改行しない", "オフにすると、▼ を Enter で確定したとき、Enter もアプリに渡します(チャットでは確定と同時に送信されます)。",
+                       $store.settings.suppressNewlineOnCommit)
+                option("▼ の候補を選んでいるときの BS で確定する", "オフのときは前の候補に戻ります。",
+                       $store.settings.inlineBackspaceImpliesCommit)
+                option("送りありの変換を取り消したとき送り仮名を消す", "オフのときは送り仮名を読みに残して ▽ に戻ります。",
+                       $store.settings.deleteOkuriWhenQuit)
+            } header: {
+                Text("確定と取り消し").font(.headline)
+            }
+
+            Section {
+                option("▽ で Q を押すと送り仮名を始める", "オフのときは Q で読みを確定します。",
+                       $store.settings.handleRecursiveEntryAsOkuri)
+            } header: {
+                Text("送り仮名").font(.headline)
+            }
+
+            Section {
+                option("数値変換を使う", "「#かい /#1回/」のような見出し語で、▽1かい を「１回」に変換します。",
+                       $store.settings.useNumericConversion)
+                Stepper(value: $store.settings.maxInlineCandidates, in: InputSettings.maxInlineCandidatesRange) {
+                    HStack {
+                        Text("▼ で表示する候補")
+                        Text("\(store.settings.maxInlineCandidates)")
+                            .monospacedDigit()
+                            .frame(minWidth: 24, alignment: .trailing)
+                    }
+                }
+            } header: {
+                Text("候補").font(.headline)
+            }
+
+            Section {
+                option("ローマ字の入力の途中で最短の一致を表示する", "n を「ん」のように表示します。オフのときはローマ字のまま表示します。",
+                       $store.settings.displayShortestMatch)
+            } header: {
+                Text("ローマ字の表示").font(.headline)
+            } footer: {
+                Text("設定は次にどこかのアプリで入力を始めたときに反映されます。")
+                    .font(.subheadline)
+                    .foregroundColor(.prefSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let error = store.saveError {
+                Text("保存できません: \(error)").foregroundColor(.prefError).font(.callout)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func option(_ title: String, _ detail: String, _ isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(detail).font(.subheadline).foregroundColor(.prefSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 480, alignment: .leading)
+            }
+        }
     }
 }
 

@@ -41,7 +41,7 @@
   - キーマップの積み順: 組み込み → 入力方式の差分(AZIK は `azik.conf`、ACT は `act.conf`。
     既存の割り当てに重ねる)→ ユーザーの上書き(`keymap.conf`)。
   - AZIK ではひらがな⇔カタカナが keycode 0x21(JIS の `@`、US の `[`)、ACT では `\` に移る。
-- 候補は最初の 4 件をインラインで ▼ 表示し、以降はマークテキスト内に
+- 候補は最初の 4 件(`settings.conf` の `max_count_of_inline_candidates`)をインラインで ▼ 表示し、以降はマークテキスト内に
   `【a:候補 s:候補 …】(ページ/総ページ)` の形で 7 件ずつ並べる。a/s/d/f/j/k/l で選ぶ。
 - 単語登録は再帰的に行える。登録中は Ctrl-Y と Cmd-V で貼り付けられる
   (改行は除く)。Cmd-V はアプリがメニューのショートカットとして先に処理すると
@@ -120,6 +120,14 @@ AquaSKK の `SKK-JISYO.L` があればそれを使う。1 行に「タイプ 場
 | `suggest_count` | 1〜20 | 5 | 一覧する件数 |
 | `completion_extended` | `on` / `off` | `on` | 補完・サジェストにシステム辞書も使う(off はユーザー辞書のみ) |
 | `annotation` | `on` / `off` | `off` | 候補選択中に、辞書の注釈(`語;注釈` の注釈)をカーソルの下に出す |
+| `suppress_newline_on_commit` | `on` / `off` | `on` | Enter で確定したとき、Enter をアプリに渡さない([ADR 0027](adr/0027-engine-options-in-preferences.md)) |
+| `inline_backspace_implies_commit` | `on` / `off` | `off` | ▼ でインラインの候補を選んでいるときの BS で確定する(off は前の候補に戻る) |
+| `delete_okuri_when_quit` | `on` / `off` | `on` | 送りありの ▼ を取り消したとき、送り仮名を消して ▽ に戻る(off は送り仮名を読みに残す) |
+| `handle_recursive_entry_as_okuri` | `on` / `off` | `off` | ▽ の読みの入力中に `Q` を押すと送り仮名を始める(off は読みを確定する) |
+| `display_shortest_match` | `on` / `off` | `off` | ローマ字の入力の途中で最短の一致を表示する(`n` を `ん`) |
+| `use_numeric_conversion` | `on` / `off` | `on` | 数値変換(`#0`〜`#9` を使う見出し語) |
+| `max_count_of_inline_candidates` | 0〜100 | 4 | ▼ でインラインに表示する候補の数。範囲の外は範囲に収める |
+| `minimum_completion_length` | 0〜15 | 0 | 読みがこの文字数より短いとき、この文字数以下の見出し語を補完(TAB とサジェスト)から外す |
 | `skkserv` | `on` / `off` | `off` | skkserv を使う |
 | `skkserv_host` | ホスト名 | `localhost` | |
 | `skkserv_port` | 1〜65535 | 1178 | |
@@ -197,7 +205,8 @@ NablaSKK 独自の書き方。例: `jl,&abbrev;,&abbrev;,&abbrev;`)。かなモ�
 | 辞書 | `dictionaries.conf` の編集(ファイルのドラッグ&ドロップで追加、有効 / 無効、行の先頭のつまみのドラッグか ↑↓ ボタンで並べ替え、名前・種類・場所。見つからないファイルは欄の下に文で示す) |
 | ユーザー辞書 | ユーザー辞書の編集(候補はつまみのドラッグか ↑↓ ボタンで並べ替え) |
 | skkserv | 有効 / ホスト / ポート / 文字コード |
-| 入力 | 句読点、サジェスト、注釈 |
+| 入力 | 句読点、サジェスト(補完から外す見出し語の長さを含む)、注釈 |
+| 変換 | 本家の設定画面の変換の設定: 確定と取り消し、送り仮名、数値変換とインラインの候補の数、ローマ字の最短一致の表示([ADR 0027](adr/0027-engine-options-in-preferences.md)) |
 | ローマ字 | 入力方式(標準 / AZIK / ACT)・記号入力・旧かなの選択、ユーザー定義ルールの編集、組み込みと補助ルールの記号ルール(読み取り専用) |
 | キー | キーバインドの変更 |
 

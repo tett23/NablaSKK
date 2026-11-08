@@ -90,7 +90,19 @@ cp -r macos/dist/NablaSKK.app ~/Library/Input\ Methods/
 Suggestions (while you type a reading, the dictionary headwords starting with it are listed
 under the cursor, and TAB completes) can be turned on and off on the "入力" (Input) page,
 together with the number of suggestions and whether to use the system dictionaries too
-(off by default).
+(off by default). Short headwords can also be left out of completion while the reading is short
+(AquaSKK's completion filter).
+
+The "変換" (Conversion) page has the conversion settings of AquaSKK's preferences (with
+AquaSKK's defaults):
+
+- Do not insert a newline when Enter commits (on; off passes the Enter to the app as well)
+- Backspace on a ▼ candidate commits it (off)
+- Canceling an okuri conversion drops the okurigana (on)
+- Q in ▽ starts the okurigana (off)
+- Numeric conversion (on; with an entry like `#かい /#1回/`, ▽1かい converts to "１回")
+- Candidates shown one at a time in ▼ (4; more are listed)
+- Show the shortest kana match while typing romaji (off; `n` shows as ん)
 
 When enabled on the "入力" (Input) page, dictionary annotations (such as "わるし（形）" in
 `悪;わるし（形）`) are shown under the cursor while you choose a candidate (off by default).

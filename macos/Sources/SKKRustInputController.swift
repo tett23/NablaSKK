@@ -79,10 +79,7 @@ enum Engine {
         let settings = InputSettings.load()
 
         applyKanaRules(to: session, settings: settings)
-        session.setOption(.enableDynamicCompletion, settings.suggestEnabled ? 1 : 0)
-        session.setOption(.dynamicCompletionRange, Int32(settings.suggestCount))
-        session.setOption(.enableExtendedCompletion, settings.completionExtended ? 1 : 0)
-        session.setOption(.enableAnnotation, settings.annotationEnabled ? 1 : 0)
+        EngineSetup.applyOptions(to: session, settings: settings)
     }
 
     private static var loadedConfigDate: Date?

@@ -223,7 +223,7 @@ checkEventually({ highlightedRows() == [0] }, "initially 辞書 is highlighted")
 let orders: [[SettingsPane]] = [
     [.input, .skkserv, .dictionaries],
     [.keys, .input],
-    [.kanaRules, .input, .dictionaries],
+    [.kanaRules, .input, .conversion, .dictionaries],
     [.userDictionary, .keys, .skkserv, .kanaRules],
 ]
 for order in orders {
@@ -252,7 +252,7 @@ func pressUp() { press(keyCode: 126, character: NSUpArrowFunctionKey) }
 
 showPane(.input)
 pressDown()
-checkEventually({ currentPane() == SettingsPane.kanaRules.rawValue && highlightedRows() == [4] }, "sidebar: ↓ moves to the next page")
+checkEventually({ currentPane() == SettingsPane.conversion.rawValue && highlightedRows() == [4] }, "sidebar: ↓ moves to the next page")
 pressUp()
 checkEventually({ currentPane() == SettingsPane.input.rawValue && highlightedRows() == [3] }, "sidebar: ↑ moves to the previous page")
 showPane(.keys)
@@ -342,6 +342,81 @@ if let input = field("jb") {
 settle()
 check(textFields(in: host).filter { !$0.isEnabled && $0.stringValue == "z." }.isEmpty,
       "romaji rules: built-in rules are text, not disabled fields")
+
+// MARK: - Conversion page (ADR 0027)
+
+// SwiftUI toggles are neither NSButtons nor (without an accessibility
+// client) accessibility elements, and an off-screen window draws them
+// inactive (grey). Find them in a rendering: a check box is a square of
+// flat light grey; a checked one has a dark check mark inside.
+struct CheckBox { let frame: NSRect; let checked: Bool }
+func checkBoxesOnPage() -> [CheckBox] {
+    let rep = snapshot()
+    func brightness(_ x: CGFloat, _ yFromTop: CGFloat) -> CGFloat {
+        // The page has no background of its own: put it on white
+        guard let c = color(in: rep, at: NSPoint(x: x, y: size.height - yFromTop)) else { return 1 }
+        return (c.redComponent + c.greenComponent + c.blueComponent) / 3 * c.alphaComponent + 1 - c.alphaComponent
+    }
+    // Rows with a run of 10+ flat light grey pixels: (y, x where the run starts)
+    var runs: [(y: CGFloat, x: CGFloat)] = []
+    for y in stride(from: CGFloat(1), to: size.height - 1, by: 1) {
+        var x = RootView.sidebarWidth + 2, start: CGFloat? = nil, previous: CGFloat = -1
+        while x < size.width - 1 {
+            let b = brightness(x, y)
+            if b > 0.75 && b < 0.97 && abs(b - previous) < 0.02 {
+                if start == nil { start = x - 1 }
+                if x - start! >= 10 { runs.append((y, start!)); break }
+            } else {
+                start = nil
+            }
+            previous = b
+            x += 1
+        }
+    }
+    // Rows close together with the same left edge form one box (a check
+    // mark breaks the runs in the middle rows)
+    var boxes: [(top: CGFloat, bottom: CGFloat, x: CGFloat)] = []
+    for run in runs {
+        if let i = boxes.lastIndex(where: { abs($0.x - run.x) <= 3 && run.y - $0.bottom <= 12 }) {
+            boxes[i].bottom = run.y
+        } else {
+            boxes.append((run.y, run.y, run.x))
+        }
+    }
+    return boxes.compactMap { box in
+        let height = box.bottom - box.top
+        guard height >= 8 && height <= 20 else { return nil }
+        let frame = NSRect(x: box.x - 2, y: box.top, width: height + 2, height: height + 1)
+        // A toggle's title follows the box (a Stepper's label is on its left)
+        let titled = stride(from: frame.minY, to: frame.maxY, by: 1).contains { y in
+            stride(from: frame.maxX + 5, to: frame.maxX + 40, by: 1).contains { x in brightness(x, y) < 0.5 }
+        }
+        guard titled else { return nil }
+        let checked = stride(from: frame.minY, to: frame.maxY, by: 1).contains { y in
+            stride(from: frame.minX, to: frame.maxX, by: 1).contains { x in brightness(x, y) < 0.35 }
+        }
+        return CheckBox(frame: frame, checked: checked)
+    }
+}
+
+// The thresholds above are for the light appearance
+let savedAppearance = host.appearance
+host.appearance = NSAppearance(named: .aqua)
+showPane(.conversion)
+// Page order: newline, backspace, okuri, Q as okuri, numeric, shortest match.
+// On by default (AquaSKK's): newline, okuri, numeric
+checkEventually({ checkBoxesOnPage().map(\.checked) == [true, false, true, false, true, false] },
+                "conversion: the six toggles show AquaSKK's defaults (got \(checkBoxesOnPage().map(\.checked)))")
+let boxes = checkBoxesOnPage()
+if boxes.count == 6 {
+    click(xFromLeft: boxes[4].frame.midX, yFromTop: boxes[4].frame.midY)
+    checkEventually({
+        (try? String(contentsOf: InputSettings.fileURL, encoding: .utf8))?.contains("use_numeric_conversion=off\n") == true
+    }, "conversion: clicking the numeric conversion toggle writes use_numeric_conversion=off")
+    checkEventually({ checkBoxesOnPage().map(\.checked) == [true, false, true, false, false, false] },
+                    "conversion: the numeric conversion toggle is off after the click")
+}
+host.appearance = savedAppearance
 
 // MARK: - User dictionary page (ADR 0006)
 
