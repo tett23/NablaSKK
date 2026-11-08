@@ -54,6 +54,29 @@ struct InputSettings: Equatable {
     /// ("悪;わるし（形）"). Off by default, as AquaSKK's enable_annotation.
     var annotationEnabled = false
 
+    // Engine options from AquaSKK's preferences (ADR 0027); defaults are
+    // AquaSKK's UserDefaults.plist. Keys keep AquaSKK's names.
+    /// Enter that commits is not passed to the application (the opposite
+    /// of skk-egg-like-newline).
+    var suppressNewlineOnCommit = true
+    /// Backspace on an inline candidate commits it (skk-delete-implies-kakutei).
+    var inlineBackspaceImpliesCommit = false
+    /// Canceling an okuri conversion drops the okurigana (skk-delete-okuri-when-quit).
+    var deleteOkuriWhenQuit = true
+    /// Q (enter Japanese) while typing a reading starts okuri.
+    var handleRecursiveEntryAsOkuri = false
+    /// Show the shortest kana match of pending romaji (n as ん).
+    var displayShortestMatch = false
+    /// Numeric conversion (#0-#9 entries).
+    var useNumericConversion = true
+    /// Candidates shown inline before the list.
+    var maxInlineCandidates = 4
+    /// Drop completions this short or shorter while the reading is shorter.
+    var minimumCompletionLength = 0
+
+    static let maxInlineCandidatesRange = 0...100
+    static let minimumCompletionLengthRange = 0...15
+
     /// Extended romaji input from AquaSKK's sub-rules (ADR 0003): one of
     /// standard / AZIK (JIS) / AZIK (US) / ACT.
     enum InputStyle: String, CaseIterable, Identifiable {
@@ -120,6 +143,14 @@ struct InputSettings: Equatable {
     #   suggest_count=5   how many to list
     #   completion_extended=on|off  complete from all dictionaries (off: user dictionary only)
     #   annotation=on|off show the selected candidate's dictionary annotation
+    #   suppress_newline_on_commit=on|off  Enter that commits is not passed on
+    #   inline_backspace_implies_commit=on|off  backspace commits an inline candidate
+    #   delete_okuri_when_quit=on|off  canceling an okuri conversion drops the okurigana
+    #   handle_recursive_entry_as_okuri=on|off  Q while typing a reading starts okuri
+    #   display_shortest_match=on|off  show pending romaji as its shortest kana match
+    #   use_numeric_conversion=on|off  numeric conversion (#0-#9)
+    #   max_count_of_inline_candidates=4  candidates shown inline (0-100)
+    #   minimum_completion_length=0  drop completions this short or shorter (0-15)
     #   skkserv=on        also query an skkserv, after the local dictionaries
     #   skkserv_host=localhost
     #   skkserv_port=1178
@@ -154,6 +185,16 @@ struct InputSettings: Equatable {
                 settings.suggestCount = min(max(Int(value) ?? 5, suggestCountRange.lowerBound), suggestCountRange.upperBound)
             case "completion_extended": settings.completionExtended = value != "off"
             case "annotation": settings.annotationEnabled = value == "on"
+            case "suppress_newline_on_commit": settings.suppressNewlineOnCommit = value != "off"
+            case "inline_backspace_implies_commit": settings.inlineBackspaceImpliesCommit = value == "on"
+            case "delete_okuri_when_quit": settings.deleteOkuriWhenQuit = value != "off"
+            case "handle_recursive_entry_as_okuri": settings.handleRecursiveEntryAsOkuri = value == "on"
+            case "display_shortest_match": settings.displayShortestMatch = value == "on"
+            case "use_numeric_conversion": settings.useNumericConversion = value != "off"
+            case "max_count_of_inline_candidates":
+                settings.maxInlineCandidates = clamp(value, maxInlineCandidatesRange, default: 4)
+            case "minimum_completion_length":
+                settings.minimumCompletionLength = clamp(value, minimumCompletionLengthRange, default: 0)
             case "skkserv": settings.skkservEnabled = value == "on"
             case "skkserv_host": settings.skkservHost = value
             case "skkserv_port": settings.skkservPort = Int(value) ?? 1178
@@ -162,6 +203,11 @@ struct InputSettings: Equatable {
             }
         }
         return settings
+    }
+
+    private static func clamp(_ value: String, _ range: ClosedRange<Int>, default fallback: Int) -> Int {
+        guard let number = Int(value) else { return fallback }
+        return min(max(number, range.lowerBound), range.upperBound)
     }
 
     func serialize() -> String {
@@ -175,6 +221,14 @@ struct InputSettings: Equatable {
             + "suggest_count=\(suggestCount)\n"
             + "completion_extended=\(completionExtended ? "on" : "off")\n"
             + "annotation=\(annotationEnabled ? "on" : "off")\n"
+            + "suppress_newline_on_commit=\(suppressNewlineOnCommit ? "on" : "off")\n"
+            + "inline_backspace_implies_commit=\(inlineBackspaceImpliesCommit ? "on" : "off")\n"
+            + "delete_okuri_when_quit=\(deleteOkuriWhenQuit ? "on" : "off")\n"
+            + "handle_recursive_entry_as_okuri=\(handleRecursiveEntryAsOkuri ? "on" : "off")\n"
+            + "display_shortest_match=\(displayShortestMatch ? "on" : "off")\n"
+            + "use_numeric_conversion=\(useNumericConversion ? "on" : "off")\n"
+            + "max_count_of_inline_candidates=\(maxInlineCandidates)\n"
+            + "minimum_completion_length=\(minimumCompletionLength)\n"
             + "skkserv=\(skkservEnabled ? "on" : "off")\n"
             + "skkserv_host=\(skkservHost)\n"
             + "skkserv_port=\(skkservPort)\n"

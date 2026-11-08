@@ -600,6 +600,9 @@ pub const SKK_OPTION_ENABLE_EXTENDED_COMPLETION: i32 = 10;
 /// Report annotations of the candidate being selected
 /// (AquaSKK's enable_annotation).
 pub const SKK_OPTION_ENABLE_ANNOTATION: i32 = 11;
+/// Drop completions of this many characters or fewer while the reading
+/// is shorter (AquaSKK's minimum_completion_length; 0 keeps them all).
+pub const SKK_OPTION_MINIMUM_COMPLETION_LENGTH: i32 = 12;
 
 /// Set an engine option. Returns 0 on success.
 ///
@@ -650,6 +653,9 @@ pub unsafe extern "C" fn skk_session_set_option(
         }
         SKK_OPTION_ENABLE_ANNOTATION => {
             session.session.config_mut().enable_annotation = flag;
+        }
+        SKK_OPTION_MINIMUM_COMPLETION_LENGTH => {
+            session.session.backend_mut().set_minimum_completion_length(value.max(0) as usize);
         }
         _ => return -1,
     }
@@ -859,3 +865,66 @@ mod null_contract_tests {
     }
 }
 
+
+/// ADR 0027: SKK_OPTION_MINIMUM_COMPLETION_LENGTH drops completions of
+/// that many characters or fewer while the reading is shorter.
+#[cfg(test)]
+mod minimum_completion_length_tests {
+    use super::*;
+
+    unsafe fn completions_of_ka(length: i32) -> Vec<String> {
+        let dir = std::env::temp_dir().join(format!("nablaskk-ffi-min-completion-{}-{length}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let dictionary = dir.join("SKK-JISYO.test");
+        std::fs::write(&dictionary, ";; okuri-nasi entries.\nか /蚊/\nかん /缶/\nかんじ /漢字/\n").unwrap();
+        let user = dir.join("skk-jisyo");
+        let _ = std::fs::remove_file(&user);
+
+        let user_path = CString::new(user.to_str().unwrap()).unwrap();
+        let s = skk_session_new(user_path.as_ptr());
+        let location = CString::new(dictionary.to_str().unwrap()).unwrap();
+        assert_eq!(skk_session_add_dictionary(s, 0, location.as_ptr()), 0);
+        skk_session_set_option(s, SKK_OPTION_ENABLE_DYNAMIC_COMPLETION, 1);
+        skk_session_set_option(s, SKK_OPTION_DYNAMIC_COMPLETION_RANGE, 10);
+        skk_session_set_option(s, SKK_OPTION_ENABLE_EXTENDED_COMPLETION, 1);
+        assert_eq!(skk_session_set_option(s, SKK_OPTION_MINIMUM_COMPLETION_LENGTH, length), 0);
+        skk_session_set_input_mode(s, 0);
+
+        for key in *b"Ka" {
+            skk_session_handle(s, key, 0, 0);
+        }
+        let count = skk_session_completion_count(s);
+        let result = (0..count)
+            .map(|index| {
+                let text = skk_session_completion(s, index);
+                let value = CStr::from_ptr(text).to_str().unwrap().to_string();
+                skk_string_free(text);
+                value
+            })
+            .collect();
+
+        skk_session_free(s);
+        result
+    }
+
+    #[test]
+    fn length_two_keeps_only_longer_entries() {
+        unsafe {
+            assert_eq!(completions_of_ka(2), vec!["かんじ".to_string()]);
+        }
+    }
+
+    #[test]
+    fn zero_keeps_every_extension() {
+        unsafe {
+            assert_eq!(completions_of_ka(0), vec!["かん".to_string(), "かんじ".to_string()]);
+        }
+    }
+
+    #[test]
+    fn negative_is_zero() {
+        unsafe {
+            assert_eq!(completions_of_ka(-1), completions_of_ka(0));
+        }
+    }
+}

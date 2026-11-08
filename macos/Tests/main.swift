@@ -864,6 +864,73 @@ do {
           "symlink: missing file has no modification date")
 }
 
+// ADR 0027: engine options from settings.conf
+do {
+    let d = InputSettings()
+    check(d.suppressNewlineOnCommit && !d.inlineBackspaceImpliesCommit && d.deleteOkuriWhenQuit
+          && !d.handleRecursiveEntryAsOkuri && !d.displayShortestMatch && d.useNumericConversion
+          && d.maxInlineCandidates == 4 && d.minimumCompletionLength == 0,
+          "options: defaults are AquaSKK's")
+    check(InputSettings.parse("comma=japanese\nsuggest=off\n") == d, "options: a file without the new keys reads as the defaults")
+
+    var flipped = InputSettings()
+    flipped.suppressNewlineOnCommit = false
+    flipped.inlineBackspaceImpliesCommit = true
+    flipped.deleteOkuriWhenQuit = false
+    flipped.handleRecursiveEntryAsOkuri = true
+    flipped.displayShortestMatch = true
+    flipped.useNumericConversion = false
+    flipped.maxInlineCandidates = 7
+    flipped.minimumCompletionLength = 3
+    check(InputSettings.parse(flipped.serialize()) == flipped, "options: serialize/parse round trip")
+    check(flipped.serialize().contains("use_numeric_conversion=off\n")
+          && flipped.serialize().contains("display_shortest_match=on\n"), "options: keys as written in the file")
+
+    check(InputSettings.parse("max_count_of_inline_candidates=101\n").maxInlineCandidates == 100
+          && InputSettings.parse("max_count_of_inline_candidates=-1\n").maxInlineCandidates == 0
+          && InputSettings.parse("minimum_completion_length=16\n").minimumCompletionLength == 15
+          && InputSettings.parse("max_count_of_inline_candidates=many\n").maxInlineCandidates == 4
+          && InputSettings.parse("minimum_completion_length=x\n").minimumCompletionLength == 0,
+          "options: numbers are clamped, garbage is the default")
+
+    let dict = NSTemporaryDirectory() + "nablaskk-options-dict"
+    try! ";; okuri-ari entries.\n;; okuri-nasi entries.\n#かい /#1回/\nかんじ /漢字/感じ/幹事/\n"
+        .write(toFile: dict, atomically: true, encoding: .utf8)
+    func optionSession(_ text: String) -> SKKSession {
+        let s = SKKSession(userDictionaryPath: NSTemporaryDirectory() + "nablaskk-options-user")
+        s.addDictionary(.commonUTF8, location: dict)
+        EngineSetup.applyOptions(to: s, settings: InputSettings.parse(text))
+        return s
+    }
+    func type(_ s: SKKSession, _ keys: String) {
+        for c in keys.utf8 { s.handle(charcode: c, mods: (65...90).contains(c) ? .shift : []) }
+    }
+
+    let numeric = optionSession("")
+    type(numeric, "Q1kai ")
+    check(numeric.composing == "▼１回", "options: numeric conversion on by default (\(numeric.composing))")
+    let noNumeric = optionSession("use_numeric_conversion=off\n")
+    type(noNumeric, "Q1kai ")
+    check(!noNumeric.composing.contains("回"), "options: numeric conversion off (\(noNumeric.composing))")
+
+    let suppressed = optionSession("")
+    type(suppressed, "Kanji ")
+    check(suppressed.handle(charcode: 0x0d, keycode: 36) && suppressed.takeFixed() == "漢字",
+          "options: Enter commits and is consumed by default")
+    let newline = optionSession("suppress_newline_on_commit=off\n")
+    type(newline, "Kanji ")
+    check(!newline.handle(charcode: 0x0d, keycode: 36) && newline.takeFixed() == "漢字",
+          "options: suppress_newline_on_commit=off commits and passes Enter on")
+
+    let inline4 = optionSession("")
+    type(inline4, "Kanji  ")
+    check(!inline4.candidatesVisible && inline4.composing == "▼感じ", "options: second candidate inline by default")
+    let inline1 = optionSession("max_count_of_inline_candidates=1\n")
+    type(inline1, "Kanji  ")
+    check(inline1.candidatesVisible, "options: max_count_of_inline_candidates=1 lists from the second space")
+    try? FileManager.default.removeItem(atPath: dict)
+}
+
 if failures > 0 {
     print("\(failures) FAILED")
     exit(1)

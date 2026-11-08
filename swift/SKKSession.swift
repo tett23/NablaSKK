@@ -193,6 +193,7 @@ public final class SKKSession {
         case dynamicCompletionRange = 9
         case enableExtendedCompletion = 10
         case enableAnnotation = 11
+        case minimumCompletionLength = 12
     }
 
     /// Set an engine option (booleans take 0/1).
