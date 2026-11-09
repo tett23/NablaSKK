@@ -241,7 +241,10 @@ C ABI。正は `crates/nablaskk-ffi/include/nablaskk.h`、Swift ラッパーは
   変えない。`docs/audit/` の監査記録はコミット後に変えない(adr-guard が
   git の pre-commit hook と CI で検査する。Claude Code の hook は利用者の全体の設定
   `~/.claude/settings.json` で入れる)。文書の中の ADR の参照にはリンクを付ける
-  (CI の adr-guard が検査する)。
+  (CI の adr-guard が検査する)。CI の adr-guard は v0.10.0 で、ADR の番号の重複も検査する。
+  CI が検査する範囲は、pull request では base から、push では push 前の ref から。タグや新しい
+  ブランチの push(push 前の ref が無い)では、main との分岐点から検査する
+  ([ADR 0028](adr/0028-adr-check-base-for-new-refs.md))。
 - 作業はブランチで行い、main へは `--no-ff` でマージする。main を rebase しない。
 - `v` で始まるタグを push すると CI がリリースの下書きを作る。タグ名に `-` を
   含む場合(`v1.1.0-rc` など)はプレリリースになる。リリースノートには追加・削除した
