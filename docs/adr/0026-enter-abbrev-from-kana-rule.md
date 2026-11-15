@@ -1,6 +1,6 @@
 # ADR 0026: ローマ字かなルールの出力で abbrev モードに入る
 
-ステータス: 採択
+Status: accepted
 
 ## 文脈
 

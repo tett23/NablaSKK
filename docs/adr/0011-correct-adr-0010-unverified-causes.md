@@ -1,6 +1,6 @@
 # ADR 0011: [ADR 0010](0010-vscode-key-handling.md) の実装で断定した原因を推測に戻し、ゼロ幅スペースのキャレット位置を記録する
 
-ステータス: 採択
+Status: accepted
 
 ## 文脈
 

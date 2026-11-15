@@ -1,6 +1,6 @@
 # ADR 0028: CI の adr ジョブを adr-guard v0.10.0 に上げ、タグや新しいブランチの push では main との分岐点から検査する
 
-ステータス: 採択
+Status: superseded [{"part":"CI の adr-guard の版","by":["docs/adr/0029-update-adr-guard-to-v0-13-1.md"]}]
 
 ## 文脈
 
