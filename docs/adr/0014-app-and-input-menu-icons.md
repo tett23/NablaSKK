@@ -1,6 +1,6 @@
 # ADR 0014: 設定アプリと入力メニューにアイコンを付ける
 
-ステータス: 採択→アイコンを描く道具(qlmanage)は[ADR 0015](0015-render-icons-with-sips.md)
+Status: superseded [{"by":["docs/adr/0015-render-icons-with-sips.md"],"part":"アイコンを描く道具(qlmanage)"}]
 
 ## 文脈
 

@@ -331,7 +331,7 @@ adr-guard の hook を入れてください([adr-guard の README](https://githu
 の例のとおり。リポジトリには置いていません):
 
 ```sh
-cargo install --git https://github.com/tett23/adr-guard --tag v0.8.2
+cargo install --git https://github.com/tett23/adr-guard --tag v0.13.1
 git config core.hooksPath .githooks
 ```
 

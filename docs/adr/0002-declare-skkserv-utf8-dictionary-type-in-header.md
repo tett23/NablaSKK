@@ -1,6 +1,6 @@
 # ADR 0002: C ヘッダの辞書タイプに skkserv(UTF-8)を宣言する
 
-ステータス: 採択
+Status: accepted
 
 ## 文脈
 

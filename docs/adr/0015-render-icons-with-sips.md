@@ -1,6 +1,6 @@
 # ADR 0015: アイコンの SVG を qlmanage ではなく sips で描く
 
-ステータス: 採択
+Status: accepted
 
 ## 文脈
 

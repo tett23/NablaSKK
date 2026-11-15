@@ -36,7 +36,7 @@ jobs:
           fi
           echo "base=$base" >> "$GITHUB_OUTPUT"
           echo "head=$HEAD" >> "$GITHUB_OUTPUT"
-      - uses: tett23/adr-guard@v0.10.0
+      - uses: tett23/adr-guard@v0.13.1
         with:
           allow-status: true
           allow-links: true

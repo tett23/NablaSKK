@@ -1,6 +1,6 @@
 # ADR 0004: リポジトリの Claude Code の hook を外す
 
-ステータス: 採択
+Status: accepted
 
 ## 文脈
 

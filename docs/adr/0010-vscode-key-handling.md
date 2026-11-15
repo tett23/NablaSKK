@@ -1,6 +1,6 @@
 # ADR 0010: VSCode でひらがなの確定と消費したキーがキーのまま届く不具合を直す
 
-ステータス: 採択→原因の記述とゼロ幅スペースのキャレット位置は[ADR 0011](0011-correct-adr-0010-unverified-causes.md)
+Status: superseded [{"by":["docs/adr/0011-correct-adr-0010-unverified-causes.md"],"part":"原因の記述とゼロ幅スペースのキャレット位置"}]
 
 ## 文脈
 

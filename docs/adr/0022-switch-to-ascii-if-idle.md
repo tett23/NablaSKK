@@ -1,6 +1,6 @@
 # ADR 0022: 入力中は何もしない「英数モードへ」の操作 (SwitchToAsciiIfIdle) を足す
 
-ステータス: 採択
+Status: accepted
 
 ## 文脈
 

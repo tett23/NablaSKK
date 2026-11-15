@@ -1,6 +1,6 @@
 # ADR 0017: UI テストのクリックで、mouse-down と mouse-up のあいだに run loop を回す
 
-ステータス: 採択
+Status: accepted
 
 ## 文脈
 
