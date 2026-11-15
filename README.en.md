@@ -335,7 +335,7 @@ adr-guard hook to your global settings (`~/.claude/settings.json`), as in the ex
 repository):
 
 ```sh
-cargo install --git https://github.com/tett23/adr-guard --tag v0.8.2
+cargo install --git https://github.com/tett23/adr-guard --tag v0.13.1
 git config core.hooksPath .githooks
 ```
 

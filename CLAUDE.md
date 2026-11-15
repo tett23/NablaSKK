@@ -31,8 +31,10 @@
 
 ## 進め方
 - 実装の前に `docs/adr/` に ADR を書き(連番 + kebab-case、テンプレートは
-  グローバル規則)、コミットせずにレビューを受ける。採択されたらステータスを
-  「採択」にしてコミットし、実装に入る。コミット済みの ADR はステータスの行
+  グローバル規則)、ステータスの行を `Status: proposed` にして、コミットせずにレビューを
+  受ける。採択されたら `Status: proposed` のままコミットし、続くコミットでステータスを
+  `accepted-pending`(実装の要る ADR)か `accepted`(実装の要らない ADR)にして、実装に入る。
+  実装を終えたら `accepted-pending` を `accepted` にする([ADR 0029](docs/adr/0029-update-adr-guard-to-v0-13-1.md))。コミット済みの ADR はステータスの行
   とリンク以外を変えない(adr-guard が hook と CI で止める)。ADR を書いたときと
   文書を直したときは `adr-guard links --fix` で ADR の参照にリンクを付ける。仕様を変えるときは新しい
   ADR を書く。
